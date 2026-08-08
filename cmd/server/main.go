@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/coreaxissoftware/talkex_business/internal/analytics"
 	"github.com/coreaxissoftware/talkex_business/internal/audit"
 	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
@@ -72,6 +73,7 @@ func main() {
 	campaigns.RegisterRoutes(r)
 	conversations.RegisterRoutes(r)
 	developers.RegisterRoutes(r)
+	analytics.RegisterRoutes(r)
 
 	// Start
 	addr := ":" + cfg.Port
