@@ -1,0 +1,33 @@
+import api from './api'
+import type { Campaign, CampaignCreateInput } from '../types/campaign'
+
+export const campaignsService = {
+  async list(): Promise<Campaign[]> {
+    const res = await api.get('/campaigns')
+    return res.data
+  },
+
+  async get(id: string): Promise<Campaign> {
+    const res = await api.get(`/campaigns/${id}`)
+    return res.data
+  },
+
+  async create(data: CampaignCreateInput): Promise<Campaign> {
+    const res = await api.post('/campaigns', data)
+    return res.data
+  },
+
+  async launch(id: string): Promise<Campaign> {
+    const res = await api.post(`/campaigns/${id}/launch`)
+    return res.data
+  },
+
+  async cancel(id: string): Promise<Campaign> {
+    const res = await api.post(`/campaigns/${id}/cancel`)
+    return res.data
+  },
+
+  async remove(id: string): Promise<void> {
+    await api.delete(`/campaigns/${id}`)
+  },
+}

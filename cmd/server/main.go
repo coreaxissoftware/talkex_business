@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/coreaxissoftware/talkex_business/internal/audit"
+	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/contacts"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
@@ -34,6 +35,7 @@ func main() {
 		&contacts.Contact{},
 		&templates.MessageTemplate{},
 		&audit.LogEntry{},
+		&campaigns.Campaign{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -62,6 +64,7 @@ func main() {
 	contacts.RegisterRoutes(r)
 	templates.RegisterRoutes(r)
 	audit.RegisterRoutes(r)
+	campaigns.RegisterRoutes(r)
 
 	// Start
 	addr := ":" + cfg.Port
