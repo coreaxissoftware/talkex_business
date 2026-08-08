@@ -12,6 +12,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/contacts"
+	"github.com/coreaxissoftware/talkex_business/internal/conversations"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/templates"
@@ -36,6 +37,8 @@ func main() {
 		&templates.MessageTemplate{},
 		&audit.LogEntry{},
 		&campaigns.Campaign{},
+		&conversations.Conversation{},
+		&conversations.Message{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -65,6 +68,7 @@ func main() {
 	templates.RegisterRoutes(r)
 	audit.RegisterRoutes(r)
 	campaigns.RegisterRoutes(r)
+	conversations.RegisterRoutes(r)
 
 	// Start
 	addr := ":" + cfg.Port
