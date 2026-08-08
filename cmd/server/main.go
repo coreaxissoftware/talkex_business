@@ -13,6 +13,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/contacts"
 	"github.com/coreaxissoftware/talkex_business/internal/conversations"
+	"github.com/coreaxissoftware/talkex_business/internal/developers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/templates"
@@ -39,6 +40,7 @@ func main() {
 		&campaigns.Campaign{},
 		&conversations.Conversation{},
 		&conversations.Message{},
+		&developers.ApiKey{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -69,6 +71,7 @@ func main() {
 	audit.RegisterRoutes(r)
 	campaigns.RegisterRoutes(r)
 	conversations.RegisterRoutes(r)
+	developers.RegisterRoutes(r)
 
 	// Start
 	addr := ":" + cfg.Port
