@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/coreaxissoftware/talkex_business/internal/audit"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/contacts"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
@@ -32,6 +33,7 @@ func main() {
 		&wallet.WalletTransaction{},
 		&contacts.Contact{},
 		&templates.MessageTemplate{},
+		&audit.LogEntry{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -44,6 +46,7 @@ func main() {
 	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS())
 	r.Use(gin.Logger())
+	r.Use(audit.Middleware())
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -58,6 +61,7 @@ func main() {
 	wallet.RegisterRoutes(r)
 	contacts.RegisterRoutes(r)
 	templates.RegisterRoutes(r)
+	audit.RegisterRoutes(r)
 
 	// Start
 	addr := ":" + cfg.Port

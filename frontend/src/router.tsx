@@ -16,6 +16,7 @@ import Conversations from './pages/Conversations'
 import Automation from './pages/Automation'
 import Developers from './pages/Developers'
 import Analytics from './pages/Analytics'
+import Logs from './pages/Logs'
 import Billing from './pages/Billing'
 import WalletPage from './pages/WalletPage'
 import Support from './pages/Support'
@@ -47,6 +48,7 @@ const router = createBrowserRouter([
           { path: '/automation', element: <Automation /> },
           { path: '/developers', element: <Developers /> },
           { path: '/analytics', element: <Analytics /> },
+          { path: '/logs', element: <Logs /> },
           { path: '/billing', element: <Billing /> },
           { path: '/wallet', element: <WalletPage /> },
           { path: '/support', element: <Support /> },
