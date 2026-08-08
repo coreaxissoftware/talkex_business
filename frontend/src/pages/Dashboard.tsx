@@ -1,15 +1,83 @@
-import { Wallet, MessageSquare, Users, TrendingUp } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router'
+import { Wallet, MessageSquare, Users, FileText } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import { walletService } from '../services/wallet'
+import { contactsService } from '../services/contacts'
+import { templatesService } from '../services/templates'
 
-const stats = [
-  { label: 'Wallet Balance', value: '₹0.00', icon: Wallet, color: 'text-emerald-600 bg-emerald-50' },
-  { label: 'Messages Sent', value: '0', icon: MessageSquare, color: 'text-blue-600 bg-blue-50' },
-  { label: 'Total Contacts', value: '0', icon: Users, color: 'text-purple-600 bg-purple-50' },
-  { label: 'Delivery Rate', value: '—', icon: TrendingUp, color: 'text-amber-600 bg-amber-50' },
-]
+function formatMoney(amount: number, currency: string) {
+  const symbol = currency === 'INR' ? '₹' : currency + ' '
+  return `${symbol}${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+}
 
 export default function Dashboard() {
   const { user } = useAuthStore()
+
+  const [walletBalance, setWalletBalance] = useState<string>('—')
+  const [contactCount, setContactCount] = useState<string>('—')
+  const [templateCount, setTemplateCount] = useState<string>('—')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function load() {
+      const [walletResult, contactsResult, templatesResult] = await Promise.allSettled([
+        walletService.get(),
+        contactsService.list(),
+        templatesService.list(),
+      ])
+      if (cancelled) return
+
+      if (walletResult.status === 'fulfilled') {
+        setWalletBalance(formatMoney(walletResult.value.balance, walletResult.value.currency))
+      }
+      if (contactsResult.status === 'fulfilled') {
+        setContactCount(String(contactsResult.value.length))
+      }
+      if (templatesResult.status === 'fulfilled') {
+        setTemplateCount(String(templatesResult.value.length))
+      }
+      setLoading(false)
+    }
+    load()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const stats = [
+    {
+      label: 'Wallet Balance',
+      value: loading ? '…' : walletBalance,
+      icon: Wallet,
+      color: 'text-emerald-600 bg-emerald-50',
+      href: '/wallet',
+    },
+    {
+      label: 'Total Contacts',
+      value: loading ? '…' : contactCount,
+      icon: Users,
+      color: 'text-purple-600 bg-purple-50',
+      href: '/contacts',
+    },
+    {
+      label: 'Message Templates',
+      value: loading ? '…' : templateCount,
+      icon: FileText,
+      color: 'text-blue-600 bg-blue-50',
+      href: '/templates',
+    },
+    {
+      label: 'Messages Sent',
+      value: '0',
+      icon: MessageSquare,
+      color: 'text-amber-600 bg-amber-50',
+      href: '/conversations',
+    },
+  ]
 
   return (
     <div>
@@ -25,9 +93,10 @@ export default function Dashboard() {
       {/* Stats grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat) => (
-          <div
+          <Link
             key={stat.label}
-            className="rounded-xl border bg-white p-6 shadow-sm"
+            to={stat.href}
+            className="rounded-xl border bg-white p-6 shadow-sm hover:shadow-md hover:border-primary-200 transition-all"
           >
             <div className="flex items-center justify-between mb-4">
               <span className="text-sm font-medium text-gray-500">{stat.label}</span>
@@ -36,7 +105,7 @@ export default function Dashboard() {
               </div>
             </div>
             <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-          </div>
+          </Link>
         ))}
       </div>
 
