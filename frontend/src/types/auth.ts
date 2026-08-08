@@ -1,3 +1,5 @@
+export type QualityStatus = 'green' | 'yellow' | 'red'
+
 export interface User {
   id: string
   email: string
@@ -7,6 +9,7 @@ export interface User {
   is_business_verified: boolean
   business_category: string | null
   quality_flagged_at: string | null
+  quality_status: QualityStatus
   created_at: string
 }
 

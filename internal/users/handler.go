@@ -34,6 +34,17 @@ type changePasswordReq struct {
 	NewPassword     string `json:"new_password" binding:"required,min=8"`
 }
 
+// meResponse adds the computed quality tier alongside the raw user record
+// — computed, not stored, so it can't drift from QualityFlaggedAt.
+type meResponse struct {
+	User
+	QualityStatus string `json:"quality_status"`
+}
+
+func withQualityStatus(u *User) meResponse {
+	return meResponse{User: *u, QualityStatus: QualityStatus(u)}
+}
+
 type tokenResp struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -146,7 +157,7 @@ func handleMe(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"detail": "User not found"})
 		return
 	}
-	c.JSON(http.StatusOK, user)
+	c.JSON(http.StatusOK, withQualityStatus(user))
 }
 
 func handleUpdateMe(c *gin.Context) {
@@ -171,7 +182,7 @@ func handleUpdateMe(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
 		return
 	}
-	c.JSON(http.StatusOK, updated)
+	c.JSON(http.StatusOK, withQualityStatus(updated))
 }
 
 func handleChangePassword(c *gin.Context) {

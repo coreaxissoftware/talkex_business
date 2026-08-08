@@ -5,6 +5,7 @@ import { useAuthStore } from '../store/authStore'
 import { walletService } from '../services/wallet'
 import { contactsService } from '../services/contacts'
 import { templatesService } from '../services/templates'
+import QualityBadge from '../components/QualityBadge'
 
 function formatMoney(amount: number, currency: string) {
   const symbol = currency === 'INR' ? '₹' : currency + ' '
@@ -81,13 +82,16 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">
-          Welcome back, {user?.full_name}
-        </h1>
-        <p className="text-gray-500 mt-1">
-          Here's what's happening with your messaging today.
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Welcome back, {user?.full_name}
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Here's what's happening with your messaging today.
+          </p>
+        </div>
+        {user && <QualityBadge status={user.quality_status} />}
       </div>
 
       {/* Stats grid */}

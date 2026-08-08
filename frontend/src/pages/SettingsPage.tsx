@@ -3,6 +3,7 @@ import { Settings, User, Lock, Mail, ShieldCheck, Check } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { usersService } from '../services/users'
 import PasswordInput from '../components/PasswordInput'
+import QualityBadge from '../components/QualityBadge'
 
 export default function SettingsPage() {
   const { user, fetchUser } = useAuthStore()
@@ -153,6 +154,7 @@ export default function SettingsPage() {
             <span className="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 capitalize">
               {user?.role}
             </span>
+            {user && <QualityBadge status={user.quality_status} />}
           </div>
 
           <button

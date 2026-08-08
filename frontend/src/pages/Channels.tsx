@@ -1,13 +1,20 @@
 import { Radio } from 'lucide-react'
+import { useAuthStore } from '../store/authStore'
+import QualityBadge from '../components/QualityBadge'
 
 export default function Channels() {
+  const { user } = useAuthStore()
+
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Channels</h1>
-        <p className="text-gray-500 mt-1">
-          Manage your messaging channels — TalkEx Business, WhatsApp Business, and more.
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Channels</h1>
+          <p className="text-gray-500 mt-1">
+            Manage your messaging channels — TalkEx Business, WhatsApp Business, and more.
+          </p>
+        </div>
+        {user && <QualityBadge status={user.quality_status} />}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

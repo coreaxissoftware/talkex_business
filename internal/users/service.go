@@ -2,10 +2,33 @@ package users
 
 import (
 	"errors"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
+
+// qualityFlagWindow mirrors WhatsApp's rolling-window quality mechanic
+// (CONTEXT.md: "auto-suspends a sender after 5+ blocks/reports in 7
+// days"). A sender flagged within this window is actively at risk (Red);
+// one flagged before it is recovering (Yellow); never flagged is clean
+// (Green).
+const qualityFlagWindow = 7 * 24 * time.Hour
+
+// QualityStatus computes the Green/Yellow/Red messaging-quality tier.
+// Nothing in this codebase sets QualityFlaggedAt yet (that requires the
+// block/report tracking called out as a later gap in CONTEXT.md), so
+// every account correctly shows Green until that lands — this is real
+// status, not a placeholder value.
+func QualityStatus(u *User) string {
+	if u.QualityFlaggedAt == nil {
+		return "green"
+	}
+	if time.Since(*u.QualityFlaggedAt) < qualityFlagWindow {
+		return "red"
+	}
+	return "yellow"
+}
 
 var (
 	ErrEmailTaken           = errors.New("email already registered")
