@@ -24,6 +24,16 @@ type refreshReq struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
+type updateMeReq struct {
+	FullName         *string `json:"full_name"`
+	BusinessCategory *string `json:"business_category"`
+}
+
+type changePasswordReq struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=8"`
+}
+
 type tokenResp struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -42,6 +52,8 @@ func RegisterRoutes(r *gin.Engine) {
 	userGroup.Use(auth.AuthRequired())
 	{
 		userGroup.GET("/me", handleMe)
+		userGroup.PATCH("/me", handleUpdateMe)
+		userGroup.POST("/me/change-password", handleChangePassword)
 	}
 }
 
@@ -135,4 +147,53 @@ func handleMe(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, user)
+}
+
+func handleUpdateMe(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	user, err := GetByID(database.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "User not found"})
+		return
+	}
+
+	var req updateMeReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+
+	updated, err := UpdateProfile(database.DB, user, &UpdateProfileInput{
+		FullName:         req.FullName,
+		BusinessCategory: req.BusinessCategory,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+func handleChangePassword(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	user, err := GetByID(database.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "User not found"})
+		return
+	}
+
+	var req changePasswordReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+
+	if err := ChangePassword(database.DB, user, req.CurrentPassword, req.NewPassword); err == ErrWrongCurrentPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detail": "Password updated"})
 }

@@ -8,10 +8,11 @@ import (
 )
 
 var (
-	ErrEmailTaken    = errors.New("email already registered")
-	ErrUserNotFound  = errors.New("user not found")
-	ErrInactiveUser  = errors.New("account is inactive")
-	ErrBadCredentials = errors.New("incorrect email or password")
+	ErrEmailTaken           = errors.New("email already registered")
+	ErrUserNotFound         = errors.New("user not found")
+	ErrInactiveUser         = errors.New("account is inactive")
+	ErrBadCredentials       = errors.New("incorrect email or password")
+	ErrWrongCurrentPassword = errors.New("current password is incorrect")
 )
 
 func HashPassword(password string) (string, error) {
@@ -67,6 +68,41 @@ func GetByEmail(db *gorm.DB, email string) (*User, error) {
 		return nil, err
 	}
 	return &user, nil
+}
+
+// UpdateProfileInput uses pointers so the handler can distinguish
+// "field omitted" from "field cleared" the same way contacts/templates do.
+type UpdateProfileInput struct {
+	FullName         *string
+	BusinessCategory *string
+}
+
+func UpdateProfile(db *gorm.DB, user *User, in *UpdateProfileInput) (*User, error) {
+	if in.FullName != nil {
+		user.FullName = *in.FullName
+	}
+	if in.BusinessCategory != nil {
+		user.BusinessCategory = in.BusinessCategory
+	}
+	if err := db.Save(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// ChangePassword verifies the current password before setting a new one —
+// standard defense against a stolen session token being used to lock the
+// real owner out.
+func ChangePassword(db *gorm.DB, user *User, currentPassword, newPassword string) error {
+	if !CheckPassword(currentPassword, user.HashedPassword) {
+		return ErrWrongCurrentPassword
+	}
+	hashed, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	user.HashedPassword = hashed
+	return db.Save(user).Error
 }
 
 func Authenticate(db *gorm.DB, email, password string) (*User, error) {
