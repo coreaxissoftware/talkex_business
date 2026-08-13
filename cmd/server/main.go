@@ -13,16 +13,19 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/automation"
 	"github.com/coreaxissoftware/talkex_business/internal/billing"
 	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
+	"github.com/coreaxissoftware/talkex_business/internal/channels"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/contacts"
 	"github.com/coreaxissoftware/talkex_business/internal/conversations"
 	"github.com/coreaxissoftware/talkex_business/internal/developers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
+	"github.com/coreaxissoftware/talkex_business/internal/notifications"
 	"github.com/coreaxissoftware/talkex_business/internal/support"
 	"github.com/coreaxissoftware/talkex_business/internal/templates"
 	"github.com/coreaxissoftware/talkex_business/internal/users"
 	"github.com/coreaxissoftware/talkex_business/internal/wallet"
+	"github.com/coreaxissoftware/talkex_business/internal/webhooks"
 )
 
 func main() {
@@ -49,6 +52,10 @@ func main() {
 		&billing.Subscription{},
 		&billing.Invoice{},
 		&support.Ticket{},
+		&notifications.Notification{},
+		&webhooks.Endpoint{},
+		&webhooks.Delivery{},
+		&channels.Config{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -84,26 +91,43 @@ func main() {
 	automation.RegisterRoutes(r)
 	billing.RegisterRoutes(r)
 	support.RegisterRoutes(r)
+	notifications.RegisterRoutes(r)
+	webhooks.RegisterRoutes(r)
+	channels.RegisterRoutes(r)
 
-	// Auto-reply: match inbound message body against the owner's rules
-	// and, on the first match, send an outbound reply. Best-effort — a
-	// rule-lookup or send error is logged and the inbound path continues.
+	// On every inbound message we (a) fire matching automation rules,
+	// (b) drop an in-app notification, and (c) deliver the event to any
+	// subscribed outbound webhooks. Each is best-effort.
 	conversations.RegisterInboundHook(func(ownerID string, msg *conversations.Message, conv *conversations.Conversation) {
-		rule, err := automation.FindMatching(database.DB, ownerID, msg.Body)
-		if err != nil || rule == nil {
-			return
+		// (a) Automation
+		if rule, err := automation.FindMatching(database.DB, ownerID, msg.Body); err == nil && rule != nil {
+			_, _, err := conversations.SendOutbound(database.DB, ownerID, &conversations.SendInput{
+				ContactID:  conv.ContactID,
+				Channel:    conv.Channel,
+				Body:       rule.ResponseBody,
+				TemplateID: rule.TemplateID,
+			})
+			if err != nil {
+				log.Printf("automation: rule %s reply failed: %v", rule.ID, err)
+			} else {
+				automation.BumpFireCount(database.DB, rule)
+			}
 		}
-		_, _, err = conversations.SendOutbound(database.DB, ownerID, &conversations.SendInput{
-			ContactID:  conv.ContactID,
-			Channel:    conv.Channel,
-			Body:       rule.ResponseBody,
-			TemplateID: rule.TemplateID,
+
+		// (b) In-app notification for the owner
+		notifications.Emit(database.DB, notifications.EmitInput{
+			OwnerID: ownerID,
+			Type:    notifications.TypeInfo,
+			Title:   "New message received",
+			Body:    msg.Body,
+			Link:    "/conversations",
 		})
-		if err != nil {
-			log.Printf("automation: rule %s reply failed: %v", rule.ID, err)
-			return
-		}
-		automation.BumpFireCount(database.DB, rule)
+
+		// (c) Outbound webhook delivery
+		webhooks.Deliver(database.DB, ownerID, webhooks.EventInboundMessage, map[string]interface{}{
+			"message":      msg,
+			"conversation": conv,
+		})
 	})
 
 	// Start

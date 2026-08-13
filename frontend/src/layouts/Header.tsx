@@ -1,5 +1,6 @@
-import { LogOut, Bell, User as UserIcon } from 'lucide-react'
+import { LogOut, User as UserIcon } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import NotificationBell from '../components/NotificationBell'
 
 export default function Header() {
   const { user, logout } = useAuthStore()
@@ -13,10 +14,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Notifications placeholder */}
-        <button className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
-          <Bell size={20} className="text-gray-500" />
-        </button>
+        <NotificationBell />
 
         {/* User menu */}
         <div className="flex items-center gap-3 pl-4 border-l">

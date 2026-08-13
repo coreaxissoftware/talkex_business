@@ -15,6 +15,7 @@ import Campaigns from './pages/Campaigns'
 import Conversations from './pages/Conversations'
 import Automation from './pages/Automation'
 import Developers from './pages/Developers'
+import Webhooks from './pages/Webhooks'
 import Analytics from './pages/Analytics'
 import Logs from './pages/Logs'
 import Billing from './pages/Billing'
@@ -47,6 +48,7 @@ const router = createBrowserRouter([
           { path: '/conversations', element: <Conversations /> },
           { path: '/automation', element: <Automation /> },
           { path: '/developers', element: <Developers /> },
+          { path: '/webhooks', element: <Webhooks /> },
           { path: '/analytics', element: <Analytics /> },
           { path: '/logs', element: <Logs /> },
           { path: '/billing', element: <Billing /> },

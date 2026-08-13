@@ -12,6 +12,7 @@ import {
   Code2,
   BarChart3,
   ScrollText,
+  Webhook,
   CreditCard,
   Wallet,
   HelpCircle,
@@ -43,6 +44,7 @@ const navGroups = [
     items: [
       { to: '/automation', icon: Workflow, label: 'Automation' },
       { to: '/developers', icon: Code2, label: 'Developers' },
+      { to: '/webhooks', icon: Webhook, label: 'Webhooks' },
       { to: '/analytics', icon: BarChart3, label: 'Analytics' },
       { to: '/logs', icon: ScrollText, label: 'Logs' },
     ],
