@@ -15,6 +15,17 @@ var (
 	ErrWindowClosed         = errors.New("24-hour window is closed; use a template")
 )
 
+// InboundHook fires after an inbound message is persisted. Other packages
+// (automation) register handlers here to react without introducing an
+// import cycle back into automation.
+type InboundHook func(ownerID string, msg *Message, conv *Conversation)
+
+var inboundHooks []InboundHook
+
+func RegisterInboundHook(h InboundHook) {
+	inboundHooks = append(inboundHooks, h)
+}
+
 // ConversationWithContact is the shape the inbox actually wants: the
 // conversation row alongside the contact's display fields, so the
 // frontend doesn't have to fan out N contact lookups per render.
@@ -175,6 +186,15 @@ func RecordInbound(db *gorm.DB, ownerID string, in *InboundInput) (*Message, *Co
 	_ = db.Model(&contacts.Contact{}).
 		Where("id = ?", in.ContactID).
 		Update("last_inbound_at", now).Error
+
+	// Fire registered hooks (e.g. automation auto-reply). Recover per hook
+	// so a broken listener can't kill the inbound path.
+	for _, h := range inboundHooks {
+		func(hook InboundHook) {
+			defer func() { _ = recover() }()
+			hook(ownerID, msg, conv)
+		}(h)
+	}
 
 	return msg, conv, nil
 }
