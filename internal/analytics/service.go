@@ -128,6 +128,10 @@ type TimeseriesPoint struct {
 // GetTimeseries returns per-day outbound/inbound counts for the last `days`
 // days, with any missing days filled in as zeros — so the frontend renders
 // a continuous line without having to know which dates the DB actually saw.
+//
+// Bucketing happens in Go rather than SQL — SQLite's strftime and
+// Postgres's TO_CHAR/date_trunc take different arguments, and doing the
+// grouping here means one code path across both dialects.
 func GetTimeseries(db *gorm.DB, ownerID string, days int) ([]TimeseriesPoint, error) {
 	if days <= 0 || days > 90 {
 		days = 30
@@ -137,36 +141,33 @@ func GetTimeseries(db *gorm.DB, ownerID string, days int) ([]TimeseriesPoint, er
 	start := end.Add(-time.Duration(days) * 24 * time.Hour)
 
 	type row struct {
-		Day       string
+		CreatedAt time.Time
 		Direction string
-		N         int64
 	}
 	var raw []row
 	if err := db.Model(&conversations.Message{}).
 		Joins("JOIN conversations ON conversations.id = messages.conversation_id").
-		Select("strftime('%Y-%m-%d', messages.created_at) as day, messages.direction as direction, COUNT(*) as n").
+		Select("messages.created_at as created_at, messages.direction as direction").
 		Where("conversations.owner_id = ? AND messages.created_at >= ?", ownerID, start).
-		Group("day, direction").
 		Scan(&raw).Error; err != nil {
 		return nil, err
 	}
 
-	// Bucket into date → {out,in}
 	byDay := map[string]*TimeseriesPoint{}
 	for _, r := range raw {
-		p, ok := byDay[r.Day]
+		key := r.CreatedAt.UTC().Format("2006-01-02")
+		p, ok := byDay[key]
 		if !ok {
-			p = &TimeseriesPoint{Date: r.Day}
-			byDay[r.Day] = p
+			p = &TimeseriesPoint{Date: key}
+			byDay[key] = p
 		}
 		if r.Direction == conversations.Outbound {
-			p.Outbound = r.N
+			p.Outbound++
 		} else {
-			p.Inbound = r.N
+			p.Inbound++
 		}
 	}
 
-	// Fill missing days.
 	out := make([]TimeseriesPoint, 0, days)
 	for i := 0; i < days; i++ {
 		d := start.Add(time.Duration(i) * 24 * time.Hour).Format("2006-01-02")

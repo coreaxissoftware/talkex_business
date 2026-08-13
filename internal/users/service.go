@@ -129,6 +129,9 @@ func ChangePassword(db *gorm.DB, user *User, currentPassword, newPassword string
 }
 
 func Authenticate(db *gorm.DB, email, password string) (*User, error) {
+	// Return the same generic error for missing user, bad password, or
+	// inactive account so callers can't enumerate valid emails by
+	// distinguishing the responses.
 	user, err := GetByEmail(db, email)
 	if err != nil {
 		return nil, ErrBadCredentials
@@ -137,7 +140,7 @@ func Authenticate(db *gorm.DB, email, password string) (*User, error) {
 		return nil, ErrBadCredentials
 	}
 	if !user.IsActive {
-		return nil, ErrInactiveUser
+		return nil, ErrBadCredentials
 	}
 	return user, nil
 }

@@ -4,6 +4,7 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -11,6 +12,11 @@ import (
 
 	"github.com/joho/godotenv"
 )
+
+// defaultJWTSecret is the dev-only fallback. Loading it in a non-dev
+// environment is a fatal misconfiguration — any attacker who knows this
+// string (i.e. anyone who reads this file) could forge tokens.
+const defaultJWTSecret = "changeme-generate-a-real-secret"
 
 type Config struct {
 	DatabaseURL        string
@@ -33,12 +39,28 @@ func Get() *Config {
 
 		instance = &Config{
 			DatabaseURL:      envOr("DATABASE_URL", "sqlite://talkex_business.db"),
-			JWTSecret:        envOr("JWT_SECRET", "changeme-generate-a-real-secret"),
+			JWTSecret:        envOr("JWT_SECRET", defaultJWTSecret),
 			JWTAccessMinutes: envIntOr("JWT_ACCESS_MINUTES", 15),
 			JWTRefreshDays:   envIntOr("JWT_REFRESH_DAYS", 30),
 			Port:             envOr("PORT", "8080"),
 			Environment:      envOr("ENVIRONMENT", "development"),
 			CORSOrigins:      strings.Split(envOr("CORS_ORIGINS", "http://localhost:5173"), ","),
+		}
+
+		// Fail loud in non-dev environments if the JWT secret was left at
+		// its dev default — otherwise a forgotten env var means any
+		// attacker can forge tokens.
+		if !instance.IsDev() {
+			if instance.JWTSecret == defaultJWTSecret || len(instance.JWTSecret) < 32 {
+				log.Fatalf("config: JWT_SECRET must be set to a strong value (>=32 chars) in non-dev environments")
+			}
+			// Wildcard + credentials is a footgun even if browsers allow
+			// it silently in some CORS setups.
+			for _, o := range instance.CORSOrigins {
+				if strings.TrimSpace(o) == "*" {
+					log.Fatalf("config: CORS_ORIGINS=* is not allowed outside development")
+				}
+			}
 		}
 	})
 	return instance

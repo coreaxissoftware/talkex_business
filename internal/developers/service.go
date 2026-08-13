@@ -3,12 +3,30 @@ package developers
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
 )
+
+// ConstantTimeEqual is exposed for callers who compare user-supplied HMAC
+// signatures against derived ones — always use it to avoid timing attacks.
+func ConstantTimeEqual(a, b string) bool {
+	return subtle.ConstantTimeCompare([]byte(a), []byte(b)) == 1
+}
+
+// ExtractBearer pulls a "Bearer <secret>" out of an Authorization header.
+// Returns "" when the shape doesn't match; callers treat that as no key.
+func ExtractBearer(header string) string {
+	const prefix = "Bearer "
+	if !strings.HasPrefix(header, prefix) {
+		return ""
+	}
+	return strings.TrimPrefix(header, prefix)
+}
 
 var (
 	ErrKeyNotFound = errors.New("api key not found")
@@ -109,4 +127,21 @@ func Delete(db *gorm.DB, ownerID, id string) error {
 		return err
 	}
 	return db.Delete(&k).Error
+}
+
+// ResolveKey looks up a plaintext API key and returns the row it maps to
+// (or nil if no active row exists). Bumps LastUsedAt as a side effect so
+// developers can spot idle keys in the dashboard.
+func ResolveKey(db *gorm.DB, plaintext string) (*ApiKey, error) {
+	hash := HashKey(plaintext)
+	var k ApiKey
+	if err := db.Where("key_hash = ? AND revoked_at IS NULL", hash).First(&k).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	now := time.Now()
+	_ = db.Model(&k).Update("last_used_at", now).Error
+	return &k, nil
 }

@@ -20,10 +20,21 @@ var (
 // import cycle back into automation.
 type InboundHook func(ownerID string, msg *Message, conv *Conversation)
 
-var inboundHooks []InboundHook
+// OutboundHook fires after an outbound message is persisted, used by the
+// webhook layer to emit `message.status`.
+type OutboundHook func(ownerID string, msg *Message, conv *Conversation)
+
+var (
+	inboundHooks  []InboundHook
+	outboundHooks []OutboundHook
+)
 
 func RegisterInboundHook(h InboundHook) {
 	inboundHooks = append(inboundHooks, h)
+}
+
+func RegisterOutboundHook(h OutboundHook) {
+	outboundHooks = append(outboundHooks, h)
 }
 
 // ConversationWithContact is the shape the inbox actually wants: the
@@ -141,6 +152,14 @@ func SendOutbound(db *gorm.DB, ownerID string, in *SendInput) (*Message, *Conver
 	if err := db.Save(conv).Error; err != nil {
 		return nil, nil, err
 	}
+
+	for _, h := range outboundHooks {
+		func(hook OutboundHook) {
+			defer func() { _ = recover() }()
+			hook(ownerID, msg, conv)
+		}(h)
+	}
+
 	return msg, conv, nil
 }
 

@@ -19,9 +19,15 @@ import (
 type TokenType string
 
 const (
-	AccessToken  TokenType = "access"
-	RefreshToken TokenType = "refresh"
+	AccessToken        TokenType = "access"
+	RefreshToken       TokenType = "refresh"
+	PasswordResetToken TokenType = "password_reset"
 )
+
+// passwordResetDuration keeps the reset window short — long enough for
+// the email to arrive and be clicked, short enough that a stolen link
+// isn't useful the next day.
+const passwordResetDuration = 30 * time.Minute
 
 type Claims struct {
 	Type TokenType `json:"type"`
@@ -59,6 +65,14 @@ func CreateAccessToken(userID string) (string, error) {
 func CreateRefreshToken(userID string) (string, error) {
 	cfg := config.Get()
 	return createToken(userID, RefreshToken, time.Duration(cfg.JWTRefreshDays)*24*time.Hour)
+}
+
+func CreatePasswordResetToken(userID string) (string, error) {
+	return createToken(userID, PasswordResetToken, passwordResetDuration)
+}
+
+func ValidatePasswordResetToken(tokenString string) (string, error) {
+	return ValidateToken(tokenString, PasswordResetToken)
 }
 
 // ValidateToken parses and validates a JWT, ensuring it matches the

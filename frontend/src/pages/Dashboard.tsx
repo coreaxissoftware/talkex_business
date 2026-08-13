@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { Wallet, MessageSquare, Users, FileText } from 'lucide-react'
+import { Wallet, MessageSquare, Users, FileText, Send, CheckCircle2 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { walletService } from '../services/wallet'
 import { contactsService } from '../services/contacts'
 import { templatesService } from '../services/templates'
+import { analyticsService } from '../services/analytics'
+import type { AnalyticsSummary } from '../types/analytics'
 import QualityBadge from '../components/QualityBadge'
 
 function formatMoney(amount: number, currency: string) {
@@ -18,16 +20,18 @@ export default function Dashboard() {
   const [walletBalance, setWalletBalance] = useState<string>('—')
   const [contactCount, setContactCount] = useState<string>('—')
   const [templateCount, setTemplateCount] = useState<string>('—')
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
-      const [walletResult, contactsResult, templatesResult] = await Promise.allSettled([
+      const [walletResult, contactsResult, templatesResult, summaryResult] = await Promise.allSettled([
         walletService.get(),
         contactsService.list(),
         templatesService.list(),
+        analyticsService.summary(),
       ])
       if (cancelled) return
 
@@ -39,6 +43,9 @@ export default function Dashboard() {
       }
       if (templatesResult.status === 'fulfilled') {
         setTemplateCount(String(templatesResult.value.length))
+      }
+      if (summaryResult.status === 'fulfilled') {
+        setSummary(summaryResult.value)
       }
       setLoading(false)
     }
@@ -73,10 +80,24 @@ export default function Dashboard() {
     },
     {
       label: 'Messages Sent',
-      value: '0',
-      icon: MessageSquare,
+      value: loading ? '…' : (summary?.outbound_messages.toLocaleString() ?? '0'),
+      icon: Send,
       color: 'text-amber-600 bg-amber-50',
       href: '/conversations',
+    },
+    {
+      label: 'Messages Received',
+      value: loading ? '…' : (summary?.inbound_messages.toLocaleString() ?? '0'),
+      icon: MessageSquare,
+      color: 'text-sky-600 bg-sky-50',
+      href: '/conversations',
+    },
+    {
+      label: 'Delivery Rate',
+      value: loading ? '…' : (summary ? `${summary.delivery_rate.toFixed(1)}%` : '—'),
+      icon: CheckCircle2,
+      color: 'text-green-600 bg-green-50',
+      href: '/analytics',
     },
   ]
 

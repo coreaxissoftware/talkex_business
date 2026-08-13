@@ -9,6 +9,14 @@ import (
 
 var ErrContactNotFound = errors.New("contact not found")
 
+// CreateHook fires when a new contact is persisted. main.go wires it to
+// the outbound webhook layer without creating a package cycle.
+type CreateHook func(ownerID string, c *Contact)
+
+var createHooks []CreateHook
+
+func RegisterCreateHook(h CreateHook) { createHooks = append(createHooks, h) }
+
 func List(db *gorm.DB, ownerID string) ([]Contact, error) {
 	var contacts []Contact
 	err := db.Where("owner_id = ?", ownerID).Order("created_at DESC").Find(&contacts).Error
@@ -52,6 +60,12 @@ func Create(db *gorm.DB, ownerID string, in *CreateInput) (*Contact, error) {
 	}
 	if err := db.Create(c).Error; err != nil {
 		return nil, err
+	}
+	for _, h := range createHooks {
+		func(hook CreateHook) {
+			defer func() { _ = recover() }()
+			hook(ownerID, c)
+		}(h)
 	}
 	return c, nil
 }

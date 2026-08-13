@@ -56,7 +56,7 @@ function ProgressBar({ campaign }: { campaign: Campaign }) {
         <div className="bg-red-500" style={{ width: `${pct(failed_count)}%` }} />
       </div>
       <p className="mt-1 text-[10px] text-gray-500">
-        {delivered_count + sent_count}/{total_count} sent
+        {sent_count}/{total_count} sent
       </p>
     </div>
   )

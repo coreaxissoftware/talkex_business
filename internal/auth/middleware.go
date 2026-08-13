@@ -7,9 +7,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// AuthRequired is a Gin middleware that extracts and validates the Bearer
-// access token. On success it sets "user_id" in the context for downstream
-// handlers to use.
+// ApiKeyResolver — injected from main.go so this package doesn't need to
+// import developers (which imports database/models and would create a
+// circular reference the wrong way).
+//
+// Return (ownerID, true) when the raw string is a valid, non-revoked
+// API key; (_, false) otherwise. Called only when the Bearer token
+// fails JWT validation, so real users pay no extra cost.
+type ApiKeyResolver func(raw string) (ownerID string, ok bool)
+
+var apiKeyResolver ApiKeyResolver
+
+func RegisterApiKeyResolver(f ApiKeyResolver) { apiKeyResolver = f }
+
+// AuthRequired accepts either a JWT access token or a Bearer API key.
+// On success it sets "user_id" in the context for downstream handlers.
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
@@ -19,14 +31,27 @@ func AuthRequired() gin.HandlerFunc {
 		}
 
 		tokenStr := strings.TrimPrefix(header, "Bearer ")
-		userID, err := ValidateToken(tokenStr, AccessToken)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"detail": "Could not validate credentials"})
+
+		// Try JWT first — the common case for browser sessions.
+		if userID, err := ValidateToken(tokenStr, AccessToken); err == nil {
+			c.Set("user_id", userID)
+			c.Set("auth_method", "jwt")
+			c.Next()
 			return
 		}
 
-		c.Set("user_id", userID)
-		c.Next()
+		// Fall back to API key resolution when a resolver is registered
+		// (i.e. production; unit tests without full wiring skip this path).
+		if apiKeyResolver != nil {
+			if ownerID, ok := apiKeyResolver(tokenStr); ok {
+				c.Set("user_id", ownerID)
+				c.Set("auth_method", "api_key")
+				c.Next()
+				return
+			}
+		}
+
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"detail": "Could not validate credentials"})
 	}
 }
 

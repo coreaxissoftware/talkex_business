@@ -1,6 +1,7 @@
 package users
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +23,15 @@ type loginReq struct {
 
 type refreshReq struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type forgotPasswordReq struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type resetPasswordReq struct {
+	Token       string `json:"token" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=8"`
 }
 
 type updateMeReq struct {
@@ -57,6 +67,8 @@ func RegisterRoutes(r *gin.Engine) {
 		authGroup.POST("/register", handleRegister)
 		authGroup.POST("/login", handleLogin)
 		authGroup.POST("/refresh", handleRefresh)
+		authGroup.POST("/forgot-password", handleForgotPassword)
+		authGroup.POST("/reset-password", handleResetPassword)
 	}
 
 	userGroup := r.Group("/users")
@@ -207,4 +219,64 @@ func handleChangePassword(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "Password updated"})
+}
+
+// handleForgotPassword — always returns 200 (with a generic message)
+// regardless of whether the email exists, so an attacker can't enumerate
+// registered addresses through this endpoint. When the email does exist
+// we issue a short-lived JWT-encoded reset token and (in dev) log the
+// full reset URL; a real deployment wires this to the email provider.
+func handleForgotPassword(c *gin.Context) {
+	var req forgotPasswordReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	generic := gin.H{"detail": "If that address is registered, a reset link has been sent."}
+
+	user, err := GetByEmail(database.DB, req.Email)
+	if err != nil {
+		c.JSON(http.StatusOK, generic)
+		return
+	}
+	token, err := auth.CreatePasswordResetToken(user.ID)
+	if err != nil {
+		c.JSON(http.StatusOK, generic)
+		return
+	}
+	// Dev-only surface for the reset URL — production wires this to an
+	// email sender in the notifications/webhooks layer.
+	log.Printf("password reset (dev): http://localhost:5173/reset-password?token=%s", token)
+	c.JSON(http.StatusOK, generic)
+}
+
+// handleResetPassword accepts the reset token issued above plus a new
+// password and rotates it. On success the caller can log in normally.
+func handleResetPassword(c *gin.Context) {
+	var req resetPasswordReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	userID, err := auth.ValidatePasswordResetToken(req.Token)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid or expired reset token"})
+		return
+	}
+	user, err := GetByID(database.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid or expired reset token"})
+		return
+	}
+	hashed, err := HashPassword(req.NewPassword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	user.HashedPassword = hashed
+	if err := database.DB.Save(user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detail": "Password reset"})
 }

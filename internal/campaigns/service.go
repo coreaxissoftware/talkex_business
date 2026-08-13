@@ -91,9 +91,28 @@ func Create(db *gorm.DB, ownerID string, in *CreateInput) (*Campaign, error) {
 	return c, nil
 }
 
-// Launch marks a draft/scheduled campaign as running and stamps StartedAt.
-// The actual per-message enqueue happens elsewhere (worker/channel connector);
-// this is just the state transition + audit anchor.
+// SendFunc lets main.go inject the conversations.SendOutbound call
+// without campaigns importing conversations (which would create a cycle
+// via automation → conversations → campaigns).
+type SendFunc func(ownerID, contactID, channel, body string, templateID *string) error
+
+// CompletionHook fires when a campaign transitions to completed/failed —
+// wired from main.go to fan out webhooks + notifications.
+type CompletionHook func(ownerID string, c *Campaign)
+
+var (
+	sender          SendFunc
+	onComplete      CompletionHook
+)
+
+func RegisterSender(f SendFunc)              { sender = f }
+func RegisterCompletionHook(h CompletionHook) { onComplete = h }
+
+// Launch flips the state to running and, if a sender is registered,
+// fans out the per-recipient sends in a background goroutine so the HTTP
+// call returns immediately. Roll-up counters are updated after each send.
+// If no sender is wired (dev environment without a connector), the
+// campaign still transitions correctly so the UI reflects it.
 func Launch(db *gorm.DB, c *Campaign) (*Campaign, error) {
 	if c.Status != StatusDraft && c.Status != StatusScheduled {
 		return nil, ErrInvalidStatus
@@ -104,7 +123,78 @@ func Launch(db *gorm.DB, c *Campaign) (*Campaign, error) {
 	if err := db.Save(c).Error; err != nil {
 		return nil, err
 	}
+
+	// Fan out sends off the request path. Recover per-goroutine so a
+	// broken sender can't crash the process.
+	go func(campaign Campaign) {
+		defer func() { _ = recover() }()
+		run(db, &campaign)
+	}(*c)
+
 	return c, nil
+}
+
+// run executes the sends synchronously in a background goroutine. It
+// keeps its own db/campaign copy so the caller's pointer isn't mutated
+// across goroutines. If the campaign is cancelled mid-run, we stop
+// dispatching (any already-sent messages stand).
+func run(db *gorm.DB, c *Campaign) {
+	// Look up the template body once — cheaper than re-fetching per recipient.
+	var tpl templates.MessageTemplate
+	if err := db.Where("id = ?", c.TemplateID).First(&tpl).Error; err != nil {
+		markCompleted(db, c, StatusFailed)
+		return
+	}
+
+	var ids []string
+	_ = json.Unmarshal(c.ContactIDs, &ids)
+
+	sent, failed := 0, 0
+	for _, cid := range ids {
+		// Poll cancellation between recipients so a Cancel takes effect
+		// without needing an interrupt mechanism.
+		var current Campaign
+		if err := db.Select("status").Where("id = ?", c.ID).First(&current).Error; err == nil {
+			if current.Status == StatusCancelled {
+				return
+			}
+		}
+
+		var err error
+		if sender != nil {
+			tplID := c.TemplateID
+			err = sender(c.OwnerID, cid, c.Channel, tpl.Body, &tplID)
+		}
+		if err == nil {
+			sent++
+			_ = db.Model(c).UpdateColumn("sent_count", gorm.Expr("sent_count + 1")).Error
+		} else {
+			failed++
+			_ = db.Model(c).UpdateColumn("failed_count", gorm.Expr("failed_count + 1")).Error
+		}
+	}
+
+	// Terminal state: completed if we sent anything, failed if nothing went.
+	finalStatus := StatusCompleted
+	if sent == 0 && failed > 0 {
+		finalStatus = StatusFailed
+	}
+	markCompleted(db, c, finalStatus)
+	if onComplete != nil {
+		// Re-load so caller sees the latest counters.
+		var reloaded Campaign
+		if err := db.Where("id = ?", c.ID).First(&reloaded).Error; err == nil {
+			onComplete(reloaded.OwnerID, &reloaded)
+		}
+	}
+}
+
+func markCompleted(db *gorm.DB, c *Campaign, status string) {
+	now := time.Now()
+	_ = db.Model(c).Updates(map[string]interface{}{
+		"status":       status,
+		"completed_at": now,
+	}).Error
 }
 
 // Cancel moves a non-terminal campaign into cancelled state.
