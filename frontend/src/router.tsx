@@ -25,6 +25,7 @@ import SettingsPage from './pages/SettingsPage'
 import ContactLists from './pages/ContactLists'
 import MediaLibrary from './pages/MediaLibrary'
 import Team from './pages/Team'
+import Tags from './pages/Tags'
 
 const router = createBrowserRouter([
   {
@@ -61,6 +62,7 @@ const router = createBrowserRouter([
           { path: '/support', element: <Support /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/team', element: <Team /> },
+          { path: '/tags', element: <Tags /> },
         ],
       },
     ],

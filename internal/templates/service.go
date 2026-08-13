@@ -3,6 +3,7 @@ package templates
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -81,4 +82,25 @@ func Update(db *gorm.DB, t *MessageTemplate, in *UpdateInput) (*MessageTemplate,
 
 func Delete(db *gorm.DB, t *MessageTemplate) error {
 	return db.Delete(t).Error
+}
+
+// RenderBody substitutes {{1}}, {{2}}, etc. in the template body with
+// the provided values map. Keys are "1", "2", etc. This is the main
+// personalization hook for campaigns.
+func RenderBody(body string, vars map[string]string) string {
+	result := body
+	for k, v := range vars {
+		result = strings.ReplaceAll(result, "{{"+k+"}}", v)
+	}
+	return result
+}
+
+// ContactVars builds the standard variable map from a contact's fields.
+// {{1}} = name, {{2}} = phone, {{3}} = email.
+func ContactVars(name, phone, email string) map[string]string {
+	return map[string]string{
+		"1": name,
+		"2": phone,
+		"3": email,
+	}
 }

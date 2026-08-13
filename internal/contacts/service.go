@@ -17,10 +17,47 @@ var createHooks []CreateHook
 
 func RegisterCreateHook(h CreateHook) { createHooks = append(createHooks, h) }
 
+type ListFilter struct {
+	Search string
+	Tag    string
+	Limit  int
+	Offset int
+}
+
+type ListResult struct {
+	Items []Contact `json:"items"`
+	Total int64     `json:"total"`
+}
+
 func List(db *gorm.DB, ownerID string) ([]Contact, error) {
 	var contacts []Contact
 	err := db.Where("owner_id = ?", ownerID).Order("created_at DESC").Find(&contacts).Error
 	return contacts, err
+}
+
+func ListFiltered(db *gorm.DB, ownerID string, f ListFilter) (*ListResult, error) {
+	q := db.Where("owner_id = ?", ownerID)
+
+	if f.Search != "" {
+		like := "%" + f.Search + "%"
+		q = q.Where("(phone_number LIKE ? OR name LIKE ? OR email LIKE ?)", like, like, like)
+	}
+	if f.Tag != "" {
+		q = q.Where("tags LIKE ?", "%\""+f.Tag+"\"%")
+	}
+
+	var total int64
+	q.Model(&Contact{}).Count(&total)
+
+	if f.Limit <= 0 || f.Limit > 100 {
+		f.Limit = 25
+	}
+	var items []Contact
+	err := q.Order("created_at DESC").Limit(f.Limit).Offset(f.Offset).Find(&items).Error
+	if err != nil {
+		return nil, err
+	}
+	return &ListResult{Items: items, Total: total}, nil
 }
 
 func GetByID(db *gorm.DB, ownerID, contactID string) (*Contact, error) {

@@ -1,6 +1,7 @@
 package conversations
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -44,6 +45,7 @@ type ConversationWithContact struct {
 	Conversation
 	ContactName        *string `json:"contact_name"`
 	ContactPhoneNumber string  `json:"contact_phone_number"`
+	AssignedMemberName *string `json:"assigned_member_name,omitempty"`
 }
 
 // List returns every conversation for the owner, newest-message first,
@@ -216,6 +218,34 @@ func RecordInbound(db *gorm.DB, ownerID string, in *InboundInput) (*Message, *Co
 	}
 
 	return msg, conv, nil
+}
+
+type UpdateInput struct {
+	Labels     *[]string `json:"labels"`
+	AssignedTo *string   `json:"assigned_to"`
+	AssignedName *string `json:"assigned_name"`
+}
+
+func UpdateConversation(db *gorm.DB, conv *Conversation, in *UpdateInput) (*Conversation, error) {
+	if in.Labels != nil {
+		b, _ := json.Marshal(*in.Labels)
+		conv.Labels = string(b)
+	}
+	if in.AssignedTo != nil {
+		if *in.AssignedTo == "" {
+			conv.AssignedTo = nil
+			conv.AssignedName = nil
+		} else {
+			conv.AssignedTo = in.AssignedTo
+			if in.AssignedName != nil {
+				conv.AssignedName = in.AssignedName
+			}
+		}
+	}
+	if err := db.Save(conv).Error; err != nil {
+		return nil, err
+	}
+	return conv, nil
 }
 
 // MarkRead resets the unread counter — called when a user opens the thread.

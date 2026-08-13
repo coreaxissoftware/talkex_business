@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { Wallet, MessageSquare, Users, FileText, Send, CheckCircle2 } from 'lucide-react'
+import { Wallet, MessageSquare, Users, FileText, Send, CheckCircle2, Plus, Megaphone, ScrollText, ArrowRight } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { walletService } from '../services/wallet'
 import { contactsService } from '../services/contacts'
 import { templatesService } from '../services/templates'
 import { analyticsService } from '../services/analytics'
+import { auditService } from '../services/audit'
 import type { AnalyticsSummary } from '../types/analytics'
+import type { AuditLogEntry } from '../types/audit'
 import QualityBadge from '../components/QualityBadge'
 
 function formatMoney(amount: number, currency: string) {
@@ -22,16 +24,18 @@ export default function Dashboard() {
   const [templateCount, setTemplateCount] = useState<string>('—')
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activity, setActivity] = useState<AuditLogEntry[]>([])
 
   useEffect(() => {
     let cancelled = false
 
     async function load() {
-      const [walletResult, contactsResult, templatesResult, summaryResult] = await Promise.allSettled([
+      const [walletResult, contactsResult, templatesResult, summaryResult, activityResult] = await Promise.allSettled([
         walletService.get(),
         contactsService.list(),
         templatesService.list(),
         analyticsService.summary(),
+        auditService.list({ limit: 10 }),
       ])
       if (cancelled) return
 
@@ -46,6 +50,9 @@ export default function Dashboard() {
       }
       if (summaryResult.status === 'fulfilled') {
         setSummary(summaryResult.value)
+      }
+      if (activityResult.status === 'fulfilled') {
+        setActivity(activityResult.value.items)
       }
       setLoading(false)
     }
@@ -134,12 +141,93 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Placeholder chart area */}
-      <div className="rounded-xl border bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Message Activity</h3>
-        <div className="flex items-center justify-center h-64 text-gray-400">
-          <p>Chart will appear here once messages are sent.</p>
+      {/* Quick actions */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <Link
+          to="/contacts?action=new"
+          className="flex items-center gap-3 rounded-xl border bg-white p-4 shadow-sm hover:shadow-md hover:border-primary-200 transition-all"
+        >
+          <div className="rounded-lg bg-purple-50 p-2.5 text-purple-600">
+            <Plus size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">New Contact</p>
+            <p className="text-xs text-gray-500">Add a contact to your list</p>
+          </div>
+        </Link>
+        <Link
+          to="/campaigns?action=new"
+          className="flex items-center gap-3 rounded-xl border bg-white p-4 shadow-sm hover:shadow-md hover:border-primary-200 transition-all"
+        >
+          <div className="rounded-lg bg-amber-50 p-2.5 text-amber-600">
+            <Megaphone size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">New Campaign</p>
+            <p className="text-xs text-gray-500">Launch a messaging campaign</p>
+          </div>
+        </Link>
+        <Link
+          to="/templates?action=new"
+          className="flex items-center gap-3 rounded-xl border bg-white p-4 shadow-sm hover:shadow-md hover:border-primary-200 transition-all"
+        >
+          <div className="rounded-lg bg-blue-50 p-2.5 text-blue-600">
+            <ScrollText size={20} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">New Template</p>
+            <p className="text-xs text-gray-500">Create a message template</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Recent activity */}
+      <div className="rounded-xl border bg-white shadow-sm">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+          <Link to="/logs" className="flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700">
+            View all <ArrowRight size={14} />
+          </Link>
         </div>
+        {activity.length === 0 ? (
+          <div className="flex items-center justify-center h-32 text-sm text-gray-400">
+            No activity yet.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-50">
+            {activity.map((entry) => (
+              <div key={entry.id} className="flex items-center gap-4 px-6 py-3">
+                <span
+                  className={`inline-flex items-center justify-center rounded-lg px-2 py-1 text-[10px] font-bold tracking-wide ${
+                    entry.method === 'GET'
+                      ? 'bg-blue-50 text-blue-700'
+                      : entry.method === 'POST'
+                        ? 'bg-green-50 text-green-700'
+                        : entry.method === 'DELETE'
+                          ? 'bg-red-50 text-red-700'
+                          : 'bg-gray-50 text-gray-700'
+                  }`}
+                >
+                  {entry.method}
+                </span>
+                <span className="flex-1 truncate text-sm font-mono text-gray-700">{entry.path}</span>
+                <span
+                  className={`text-xs font-semibold ${entry.success ? 'text-green-600' : 'text-red-600'}`}
+                >
+                  {entry.status_code}
+                </span>
+                <span className="text-xs text-gray-400 whitespace-nowrap">
+                  {new Date(entry.created_at).toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

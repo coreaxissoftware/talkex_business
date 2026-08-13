@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { Settings, User, Lock, Mail, ShieldCheck, Check, Database, Plus, Trash2, X } from 'lucide-react'
+import { Settings, User, Lock, Mail, ShieldCheck, Check, Database, Plus, Trash2, X, AlertTriangle, Bell } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { usersService } from '../services/users'
 import { customFieldsService } from '../services/customFields'
@@ -54,6 +54,19 @@ export default function SettingsPage() {
       setFields(await customFieldsService.list())
     } catch { /* ignore */ }
   }
+
+  // Notification preferences (client-side only for MVP)
+  const [notifPrefs, setNotifPrefs] = useState({
+    campaigns: true,
+    messages: true,
+    system: true,
+  })
+
+  // Danger zone
+  const [deactivatePassword, setDeactivatePassword] = useState('')
+  const [deactivating, setDeactivating] = useState(false)
+  const [deactivateError, setDeactivateError] = useState('')
+  const [showDeactivate, setShowDeactivate] = useState(false)
 
   // Password form
   const [currentPassword, setCurrentPassword] = useState('')
@@ -258,6 +271,92 @@ export default function SettingsPage() {
           </button>
         </form>
       </div>
+      {/* Notification Preferences */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+          <Bell size={16} className="text-primary-600" />
+          Notification Preferences
+        </h2>
+        <div className="space-y-3">
+          {[
+            { key: 'campaigns' as const, label: 'Campaign Completions', desc: 'When a campaign finishes sending' },
+            { key: 'messages' as const, label: 'Inbound Messages', desc: 'When a contact sends you a message' },
+            { key: 'system' as const, label: 'System Alerts', desc: 'Low balance, quality warnings, errors' },
+          ].map(item => (
+            <label key={item.key} className="flex items-center justify-between py-2 cursor-pointer">
+              <div>
+                <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                <p className="text-xs text-gray-500">{item.desc}</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={notifPrefs[item.key]}
+                onChange={e => setNotifPrefs(prev => ({ ...prev, [item.key]: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+              />
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Danger Zone */}
+      <div className="rounded-xl border border-red-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-red-700 flex items-center gap-2 mb-4">
+          <AlertTriangle size={16} />
+          Danger Zone
+        </h2>
+
+        {!showDeactivate ? (
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Deactivate Account</p>
+              <p className="text-xs text-gray-500">Once deactivated, you will be logged out and unable to sign in.</p>
+            </div>
+            <button
+              onClick={() => setShowDeactivate(true)}
+              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 transition-colors"
+            >
+              Deactivate
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {deactivateError && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">{deactivateError}</div>
+            )}
+            <p className="text-sm text-gray-700">Enter your password to confirm account deactivation. This cannot be undone.</p>
+            <PasswordInput value={deactivatePassword} onChange={setDeactivatePassword} placeholder="Current password" />
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setShowDeactivate(false); setDeactivatePassword(''); setDeactivateError('') }}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={deactivating || !deactivatePassword}
+                onClick={async () => {
+                  setDeactivating(true)
+                  setDeactivateError('')
+                  try {
+                    await usersService.deactivateAccount(deactivatePassword)
+                    const { logout } = useAuthStore.getState()
+                    logout()
+                  } catch (err: any) {
+                    setDeactivateError(err.response?.data?.detail || 'Could not deactivate account')
+                  } finally {
+                    setDeactivating(false)
+                  }
+                }}
+                className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 transition-colors"
+              >
+                {deactivating ? 'Deactivating...' : 'Confirm Deactivate'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Custom Fields card */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <div className="flex items-center justify-between mb-4">

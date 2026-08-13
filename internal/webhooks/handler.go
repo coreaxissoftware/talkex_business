@@ -17,6 +17,7 @@ func RegisterRoutes(r *gin.Engine) {
 		g.POST("", handleCreate)
 		g.DELETE("/:id", handleDelete)
 		g.GET("/:id/deliveries", handleDeliveries)
+		g.POST("/deliveries/:did/retry", handleRetry)
 	}
 }
 
@@ -58,6 +59,18 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func handleRetry(c *gin.Context) {
+	err := RetryDelivery(database.DB, auth.GetUserID(c), c.Param("did"))
+	switch err {
+	case nil:
+		c.JSON(http.StatusOK, gin.H{"detail": "Retry queued"})
+	case ErrEndpointNotFound:
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Delivery not found"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+	}
 }
 
 func handleDeliveries(c *gin.Context) {

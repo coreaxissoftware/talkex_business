@@ -11,4 +11,14 @@ export const auditService = {
     const res = await api.get('/audit-logs/stats')
     return res.data
   },
+
+  async exportCSV(): Promise<void> {
+    const res = await api.get('/audit-logs/export-csv', { responseType: 'blob' })
+    const url = URL.createObjectURL(res.data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }

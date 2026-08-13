@@ -27,4 +27,8 @@ export const webhooksService = {
     const res = await api.get(`/webhooks/${id}/deliveries`)
     return res.data
   },
+
+  async retryDelivery(deliveryId: string): Promise<void> {
+    await api.post(`/webhooks/deliveries/${deliveryId}/retry`)
+  },
 }

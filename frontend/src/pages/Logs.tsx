@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Search,
+  Download,
 } from 'lucide-react'
 import { auditService } from '../services/audit'
 import type { AuditLogEntry, AuditStats } from '../types/audit'
@@ -92,13 +93,22 @@ export default function Logs() {
             Every API request made from your account — including failures — for debugging and audit.
           </p>
         </div>
-        <button
-          onClick={load}
-          className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => auditService.exportCSV()}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Download size={14} />
+            Export CSV
+          </button>
+          <button
+            onClick={load}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Stat cards */}

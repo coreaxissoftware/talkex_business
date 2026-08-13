@@ -10,6 +10,9 @@ export interface Conversation {
   last_outbound_at: string | null
   last_message_at: string | null
   unread_count: number
+  labels: string
+  assigned_to: string | null
+  assigned_name: string | null
   created_at: string
   updated_at: string
 }

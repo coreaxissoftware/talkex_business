@@ -27,6 +27,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/notifications"
 	"github.com/coreaxissoftware/talkex_business/internal/support"
+	"github.com/coreaxissoftware/talkex_business/internal/tags"
 	"github.com/coreaxissoftware/talkex_business/internal/team"
 	"github.com/coreaxissoftware/talkex_business/internal/templates"
 	"github.com/coreaxissoftware/talkex_business/internal/users"
@@ -80,6 +81,7 @@ func main() {
 	r.Use(middleware.CORS())
 	r.Use(gin.Logger())
 	r.Use(audit.Middleware())
+	r.Use(middleware.RateLimit(middleware.DefaultRateLimiterConfig()))
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -109,6 +111,7 @@ func main() {
 	media.RegisterRoutes(r)
 	team.RegisterRoutes(r)
 	customfields.RegisterRoutes(r)
+	tags.RegisterRoutes(r)
 
 	// Register API-key resolver with the auth package — lets any endpoint
 	// guarded by auth.AuthRequired accept a plaintext API key in place of
@@ -205,6 +208,9 @@ func main() {
 			"conversation": conv,
 		})
 	})
+
+	// Background campaign scheduler — auto-launches campaigns when scheduled_at arrives
+	campaigns.StartScheduler(database.DB)
 
 	// Start
 	addr := ":" + cfg.Port

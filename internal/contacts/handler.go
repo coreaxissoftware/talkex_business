@@ -2,9 +2,13 @@ package contacts
 
 import (
 	"encoding/csv"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -22,16 +26,51 @@ func RegisterRoutes(r *gin.Engine) {
 		g.PATCH("/:id", handleUpdate)
 		g.DELETE("/:id", handleDelete)
 		g.POST("/import-csv", handleImportCSV)
+		g.GET("/export-csv", handleExportCSV)
+		g.POST("/:id/opt-in", handleOptIn)
 	}
 }
 
 func handleList(c *gin.Context) {
-	contacts, err := List(database.DB, auth.GetUserID(c))
+	search := c.Query("search")
+	tag := c.Query("tag")
+	limitStr := c.Query("limit")
+	offsetStr := c.Query("offset")
+
+	if search == "" && tag == "" && limitStr == "" && offsetStr == "" {
+		contacts, err := List(database.DB, auth.GetUserID(c))
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+			return
+		}
+		c.JSON(http.StatusOK, contacts)
+		return
+	}
+
+	limit := 25
+	offset := 0
+	if limitStr != "" {
+		if v, err := strconv.Atoi(limitStr); err == nil && v > 0 {
+			limit = v
+		}
+	}
+	if offsetStr != "" {
+		if v, err := strconv.Atoi(offsetStr); err == nil && v >= 0 {
+			offset = v
+		}
+	}
+
+	result, err := ListFiltered(database.DB, auth.GetUserID(c), ListFilter{
+		Search: search,
+		Tag:    tag,
+		Limit:  limit,
+		Offset: offset,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
 		return
 	}
-	c.JSON(http.StatusOK, contacts)
+	c.JSON(http.StatusOK, result)
 }
 
 func handleCreate(c *gin.Context) {
@@ -191,4 +230,70 @@ func handleImportCSV(c *gin.Context) {
 		"failed":  failed,
 		"errors":  errors,
 	})
+}
+
+func handleExportCSV(c *gin.Context) {
+	contacts, err := List(database.DB, auth.GetUserID(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=contacts-%s.csv", time.Now().Format("2006-01-02")))
+
+	w := csv.NewWriter(c.Writer)
+	w.Write([]string{"phone_number", "name", "email", "tags", "opted_in", "created_at"})
+
+	for _, ct := range contacts {
+		name := ""
+		if ct.Name != nil {
+			name = *ct.Name
+		}
+		email := ""
+		if ct.Email != nil {
+			email = *ct.Email
+		}
+		var tags []string
+		_ = json.Unmarshal(ct.Tags, &tags)
+		optedIn := "no"
+		if ct.OptedIn {
+			optedIn = "yes"
+		}
+		w.Write([]string{
+			ct.PhoneNumber,
+			name,
+			email,
+			strings.Join(tags, ";"),
+			optedIn,
+			ct.CreatedAt.Format(time.RFC3339),
+		})
+	}
+	w.Flush()
+}
+
+func handleOptIn(c *gin.Context) {
+	contact := getOwnedOrAbort(c)
+	if contact == nil {
+		return
+	}
+	var in struct {
+		OptedIn bool `json:"opted_in"`
+	}
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	contact.OptedIn = in.OptedIn
+	if in.OptedIn {
+		now := time.Now()
+		contact.OptedInAt = &now
+	} else {
+		contact.OptedInAt = nil
+	}
+	if err := database.DB.Save(contact).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, contact)
 }

@@ -128,6 +128,14 @@ func ChangePassword(db *gorm.DB, user *User, currentPassword, newPassword string
 	return db.Save(user).Error
 }
 
+func DeactivateAccount(db *gorm.DB, user *User, password string) error {
+	if !CheckPassword(password, user.HashedPassword) {
+		return ErrWrongCurrentPassword
+	}
+	user.IsActive = false
+	return db.Save(user).Error
+}
+
 func Authenticate(db *gorm.DB, email, password string) (*User, error) {
 	// Return the same generic error for missing user, bad password, or
 	// inactive account so callers can't enumerate valid emails by

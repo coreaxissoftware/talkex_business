@@ -15,6 +15,7 @@ func RegisterRoutes(r *gin.Engine) {
 	{
 		g.GET("", handleList)
 		g.GET("/:id/messages", handleListMessages)
+		g.PATCH("/:id", handleUpdate)
 		g.POST("/:id/read", handleMarkRead)
 		g.POST("/send", handleSend)
 		g.POST("/inbound", handleInbound) // dev/simulator path — real webhook goes elsewhere
@@ -58,6 +59,24 @@ func handleListMessages(c *gin.Context) {
 		"window_open":  conv.IsWindowOpen(),
 		"messages":     msgs,
 	})
+}
+
+func handleUpdate(c *gin.Context) {
+	conv := getOwnedOrAbort(c)
+	if conv == nil {
+		return
+	}
+	var in UpdateInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	updated, err := UpdateConversation(database.DB, conv, &in)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
 }
 
 func handleMarkRead(c *gin.Context) {

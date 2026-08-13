@@ -11,6 +11,10 @@ import {
   ShieldOff,
   Upload,
   FileUp,
+  Download,
+  ChevronLeft,
+  ChevronRight as ChevronRightIcon,
+  Filter,
 } from 'lucide-react'
 import { contactsService } from '../services/contacts'
 import api from '../services/api'
@@ -41,11 +45,17 @@ function tagsToArray(input: string): string[] {
     .filter(Boolean)
 }
 
+const PAGE_SIZE = 25
+
 export default function Contacts() {
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
+  const [searchInput, setSearchInput] = useState('')
+  const [tagFilter, setTagFilter] = useState('')
+  const [page, setPage] = useState(0)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState<Contact | null>(null)
@@ -60,22 +70,56 @@ export default function Contacts() {
   const [importing, setImporting] = useState(false)
   const [importResult, setImportResult] = useState<{ created: number; skipped: number; failed: number; errors: string[] } | null>(null)
 
+  // All unique tags for tag filter dropdown
+  const [allTags, setAllTags] = useState<string[]>([])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await contactsService.list()
-      setContacts(data)
+      const hasFilters = search || tagFilter
+      if (hasFilters) {
+        const result = await contactsService.listFiltered({
+          search: search || undefined,
+          tag: tagFilter || undefined,
+          limit: PAGE_SIZE,
+          offset: page * PAGE_SIZE,
+        })
+        setContacts(result.items)
+        setTotal(result.total)
+      } else {
+        const result = await contactsService.listFiltered({
+          limit: PAGE_SIZE,
+          offset: page * PAGE_SIZE,
+        })
+        setContacts(result.items)
+        setTotal(result.total)
+      }
       setError('')
     } catch {
       setError('Could not load contacts. Is the backend running?')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [search, tagFilter, page])
 
   useEffect(() => {
     load()
   }, [load])
+
+  useEffect(() => {
+    contactsService.list().then((all) => {
+      const tags = new Set<string>()
+      all.forEach((c) => c.tags.forEach((t) => tags.add(t)))
+      setAllTags(Array.from(tags).sort())
+    }).catch(() => {})
+  }, [])
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  const handleSearch = () => {
+    setSearch(searchInput)
+    setPage(0)
+  }
 
   const openCreate = () => {
     setEditing(null)
@@ -159,17 +203,6 @@ export default function Contacts() {
     }
   }
 
-  const filtered = contacts.filter((c) => {
-    if (!search) return true
-    const q = search.toLowerCase()
-    return (
-      c.phone_number.toLowerCase().includes(q) ||
-      c.name?.toLowerCase().includes(q) ||
-      c.email?.toLowerCase().includes(q) ||
-      c.tags.some((t) => t.toLowerCase().includes(q))
-    )
-  })
-
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -184,6 +217,13 @@ export default function Contacts() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => contactsService.exportCSV()}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Download size={16} />
+            Export
+          </button>
           <button
             onClick={() => { setShowImport(true); setImportResult(null) }}
             className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
@@ -201,16 +241,48 @@ export default function Contacts() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name, phone, email, or tag"
-          className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
-        />
+      {/* Search + Tag filter */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder="Search name, phone, or email"
+            className="w-full rounded-lg border border-gray-300 pl-9 pr-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+          />
+        </div>
+        <button
+          onClick={handleSearch}
+          className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+        >
+          Search
+        </button>
+        {allTags.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <Filter size={14} className="text-gray-400" />
+            <select
+              value={tagFilter}
+              onChange={(e) => { setTagFilter(e.target.value); setPage(0) }}
+              className="rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+            >
+              <option value="">All tags</option>
+              {allTags.map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {(search || tagFilter) && (
+          <button
+            onClick={() => { setSearch(''); setSearchInput(''); setTagFilter(''); setPage(0) }}
+            className="flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          >
+            <X size={14} /> Clear
+          </button>
+        )}
       </div>
 
       {error && (
@@ -223,11 +295,11 @@ export default function Contacts() {
       <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
         {loading ? (
           <div className="p-10 text-center text-sm text-gray-400">Loading contacts…</div>
-        ) : filtered.length === 0 ? (
+        ) : contacts.length === 0 ? (
           <div className="p-10 text-center">
             <Users size={32} className="mx-auto text-gray-300 mb-2" />
             <p className="text-sm text-gray-500">
-              {contacts.length === 0 ? 'No contacts yet — add your first one.' : 'No matches.'}
+              {total === 0 && !search && !tagFilter ? 'No contacts yet — add your first one.' : 'No matches.'}
             </p>
           </div>
         ) : (
@@ -244,7 +316,7 @@ export default function Contacts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map((c) => {
+                {contacts.map((c) => {
                   const windowOpen = isWindowOpen(c.last_inbound_at)
                   return (
                     <tr key={c.id} className="hover:bg-gray-50 transition-colors">
@@ -269,15 +341,26 @@ export default function Contacts() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {c.opted_in ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700">
-                            <Check size={12} /> Opted in
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
-                            <ShieldOff size={12} /> No consent
-                          </span>
-                        )}
+                        <button
+                          onClick={async () => {
+                            try {
+                              const updated = await contactsService.toggleOptIn(c.id, !c.opted_in)
+                              setContacts(prev => prev.map(ct => ct.id === updated.id ? updated : ct))
+                            } catch { /* ignore */ }
+                          }}
+                          className="cursor-pointer"
+                          title={c.opted_in ? 'Click to revoke consent' : 'Click to mark opted in'}
+                        >
+                          {c.opted_in ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-700 hover:bg-green-100 transition-colors">
+                              <Check size={12} /> Opted in
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500 hover:bg-gray-200 transition-colors">
+                              <ShieldOff size={12} /> No consent
+                            </span>
+                          )}
+                        </button>
                       </td>
                       <td className="px-4 py-3">
                         {windowOpen ? (
@@ -334,10 +417,33 @@ export default function Contacts() {
         )}
       </div>
 
-      {contacts.length > 0 && (
-        <p className="text-xs text-gray-400 text-center">
-          Showing {filtered.length} of {contacts.length} contacts
-        </p>
+      {total > 0 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-gray-400">
+            Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} of {total} contacts
+          </p>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={page === 0}
+                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <span className="text-xs text-gray-500 px-2">
+                Page {page + 1} of {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                disabled={page >= totalPages - 1}
+                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <ChevronRightIcon size={16} />
+              </button>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Add / Edit modal */}

@@ -77,6 +77,7 @@ func RegisterRoutes(r *gin.Engine) {
 		userGroup.GET("/me", handleMe)
 		userGroup.PATCH("/me", handleUpdateMe)
 		userGroup.POST("/me/change-password", handleChangePassword)
+		userGroup.POST("/me/deactivate", handleDeactivate)
 	}
 }
 
@@ -219,6 +220,30 @@ func handleChangePassword(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "Password updated"})
+}
+
+func handleDeactivate(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	user, err := GetByID(database.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "User not found"})
+		return
+	}
+	var req struct {
+		Password string `json:"password" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	if err := DeactivateAccount(database.DB, user, req.Password); err == ErrWrongCurrentPassword {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Incorrect password"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detail": "Account deactivated"})
 }
 
 // handleForgotPassword — always returns 200 (with a generic message)

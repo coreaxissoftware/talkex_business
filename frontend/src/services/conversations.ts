@@ -28,6 +28,11 @@ export const conversationsService = {
     return res.data
   },
 
+  async update(id: string, data: { labels?: string[]; assigned_to?: string; assigned_name?: string }): Promise<Conversation> {
+    const res = await api.patch(`/conversations/${id}`, data)
+    return res.data
+  },
+
   async simulateInbound(data: InboundInput) {
     const res = await api.post('/conversations/inbound', data)
     return res.data

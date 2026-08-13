@@ -43,6 +43,9 @@ type Conversation struct {
 	LastOutboundAt *time.Time `json:"last_outbound_at"`
 	LastMessageAt  *time.Time `json:"last_message_at"`
 	UnreadCount    int        `gorm:"default:0" json:"unread_count"`
+	Labels         string     `gorm:"type:text;default:'[]'" json:"labels"`
+	AssignedTo     *string    `gorm:"type:varchar(36)" json:"assigned_to"`
+	AssignedName   *string    `gorm:"type:varchar(255)" json:"assigned_name"`
 }
 
 // IsWindowOpen — a free-form outbound send is allowed only inside the

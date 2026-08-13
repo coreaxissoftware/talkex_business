@@ -9,8 +9,11 @@ import {
   AlertTriangle,
   Ban,
   X,
+  Play,
+  Terminal,
 } from 'lucide-react'
 import { apiKeysService } from '../services/apiKeys'
+import api from '../services/api'
 import type { ApiKey } from '../types/apiKey'
 import Modal from '../components/Modal'
 
@@ -54,6 +57,22 @@ export default function Developers() {
 
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  // Playground
+  const ENDPOINTS = [
+    { label: 'List Contacts', method: 'GET', path: '/contacts' },
+    { label: 'List Templates', method: 'GET', path: '/templates' },
+    { label: 'List Campaigns', method: 'GET', path: '/campaigns' },
+    { label: 'List Conversations', method: 'GET', path: '/conversations' },
+    { label: 'Analytics Summary', method: 'GET', path: '/analytics/summary' },
+    { label: 'Analytics Timeseries', method: 'GET', path: '/analytics/timeseries?days=7' },
+    { label: 'Wallet Info', method: 'GET', path: '/wallet' },
+    { label: 'Audit Logs', method: 'GET', path: '/audit-logs?limit=5' },
+  ]
+  const [pgEndpoint, setPgEndpoint] = useState(0)
+  const [pgResponse, setPgResponse] = useState<string>('')
+  const [pgStatus, setPgStatus] = useState<number | null>(null)
+  const [pgRunning, setPgRunning] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -261,6 +280,70 @@ export default function Developers() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* API Playground */}
+      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="border-b border-gray-100 px-5 py-3 flex items-center gap-2">
+          <Terminal size={16} className="text-primary-600" />
+          <h2 className="text-sm font-semibold text-gray-900">API Playground</h2>
+          <span className="text-xs text-gray-400 ml-1">Test endpoints with your active session</span>
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Endpoint</label>
+              <select
+                value={pgEndpoint}
+                onChange={e => setPgEndpoint(Number(e.target.value))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none bg-white cursor-pointer"
+              >
+                {ENDPOINTS.map((ep, i) => (
+                  <option key={i} value={i}>{ep.method} {ep.path} — {ep.label}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              disabled={pgRunning}
+              onClick={async () => {
+                const ep = ENDPOINTS[pgEndpoint]
+                setPgRunning(true)
+                setPgResponse('')
+                setPgStatus(null)
+                try {
+                  const res = await api.request({ method: ep.method.toLowerCase(), url: ep.path })
+                  setPgStatus(res.status)
+                  setPgResponse(JSON.stringify(res.data, null, 2))
+                } catch (err: any) {
+                  setPgStatus(err.response?.status || 0)
+                  setPgResponse(JSON.stringify(err.response?.data || { error: err.message }, null, 2))
+                } finally {
+                  setPgRunning(false)
+                }
+              }}
+              className="flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
+            >
+              <Play size={14} />
+              {pgRunning ? 'Running…' : 'Run'}
+            </button>
+          </div>
+
+          {pgResponse && (
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs font-medium text-gray-700">Response</span>
+                {pgStatus && (
+                  <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${pgStatus < 400 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                    {pgStatus}
+                  </span>
+                )}
+              </div>
+              <pre className="rounded-lg bg-gray-900 text-gray-100 text-xs p-4 overflow-x-auto max-h-80 overflow-y-auto font-mono">
+                {pgResponse}
+              </pre>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Create modal */}

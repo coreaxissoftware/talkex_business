@@ -147,6 +147,19 @@ func ListDeliveries(db *gorm.DB, ownerID, endpointID string) ([]Delivery, error)
 	return out, err
 }
 
+func RetryDelivery(db *gorm.DB, ownerID, deliveryID string) error {
+	var d Delivery
+	if err := db.Where("id = ?", deliveryID).First(&d).Error; err != nil {
+		return ErrEndpointNotFound
+	}
+	ep, err := GetEndpoint(db, ownerID, d.EndpointID)
+	if err != nil {
+		return err
+	}
+	go post(db, ep, d.Event, []byte(d.Payload))
+	return nil
+}
+
 func post(db *gorm.DB, ep *Endpoint, event string, body []byte) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

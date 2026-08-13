@@ -20,4 +20,8 @@ export const usersService = {
   async changePassword(data: ChangePasswordInput): Promise<void> {
     await api.post('/users/me/change-password', data)
   },
+
+  async deactivateAccount(password: string): Promise<void> {
+    await api.post('/users/me/deactivate', { password })
+  },
 }

@@ -9,6 +9,7 @@ import {
   Megaphone,
   Radio,
   TrendingUp,
+  Download,
 } from 'lucide-react'
 import { analyticsService } from '../services/analytics'
 import type { AnalyticsSummary, TimeseriesPoint } from '../types/analytics'
@@ -269,6 +270,12 @@ export default function Analytics() {
               {d}d
             </button>
           ))}
+          <button
+            onClick={() => analyticsService.exportCSV(range)}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-1"
+          >
+            <Download size={12} /> Export CSV
+          </button>
         </div>
       </div>
 

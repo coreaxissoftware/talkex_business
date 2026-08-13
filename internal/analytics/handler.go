@@ -1,6 +1,7 @@
 package analytics
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -16,6 +17,7 @@ func RegisterRoutes(r *gin.Engine) {
 	{
 		g.GET("/summary", handleSummary)
 		g.GET("/timeseries", handleTimeseries)
+		g.GET("/export-csv", handleExportCSV)
 	}
 }
 
@@ -26,6 +28,24 @@ func handleSummary(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, s)
+}
+
+func handleExportCSV(c *gin.Context) {
+	days := 30
+	if v, err := strconv.Atoi(c.Query("days")); err == nil {
+		days = v
+	}
+	series, err := GetTimeseries(database.DB, auth.GetUserID(c), days)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=analytics.csv")
+	c.Writer.WriteString("date,outbound,inbound\n")
+	for _, p := range series {
+		c.Writer.WriteString(fmt.Sprintf("%s,%d,%d\n", p.Date, p.Outbound, p.Inbound))
+	}
 }
 
 func handleTimeseries(c *gin.Context) {

@@ -9,6 +9,7 @@ import {
   X,
   ExternalLink,
   ChevronRight,
+  RefreshCw,
 } from 'lucide-react'
 import { webhooksService } from '../services/webhooks'
 import { WEBHOOK_EVENTS } from '../types/webhook'
@@ -264,7 +265,22 @@ export default function Webhooks() {
                     HTTP {d.status_code || 'network'}
                   </span>
                 </div>
-                <p className="text-[10px] text-gray-400">{formatTime(d.created_at)}</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-[10px] text-gray-400">{formatTime(d.created_at)}</p>
+                  {!d.success && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await webhooksService.retryDelivery(d.id)
+                          if (detail) openDetail(detail)
+                        } catch { /* ignore */ }
+                      }}
+                      className="inline-flex items-center gap-1 text-[10px] font-medium text-primary-600 hover:text-primary-700"
+                    >
+                      <RefreshCw size={10} /> Retry
+                    </button>
+                  )}
+                </div>
                 {d.error_message && (
                   <p className="text-red-600 mt-1 truncate">{d.error_message}</p>
                 )}

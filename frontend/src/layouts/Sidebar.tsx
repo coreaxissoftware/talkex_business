@@ -14,6 +14,7 @@ import {
   Code2,
   BarChart3,
   ScrollText,
+  Tag,
   Webhook,
   CreditCard,
   Wallet,
@@ -38,6 +39,7 @@ const navGroups = [
     items: [
       { to: '/contacts', icon: Users, label: 'Contacts' },
       { to: '/contact-lists', icon: ListChecks, label: 'Lists' },
+      { to: '/tags', icon: Tag, label: 'Tags' },
       { to: '/templates', icon: FileText, label: 'Templates' },
       { to: '/media', icon: Image, label: 'Media' },
       { to: '/campaigns', icon: Megaphone, label: 'Campaigns' },

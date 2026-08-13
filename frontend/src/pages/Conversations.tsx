@@ -7,9 +7,15 @@ import {
   User as UserIcon,
   Inbox,
   MessageCircleReply,
+  Tag,
+  UserCheck,
+  X,
+  Plus,
 } from 'lucide-react'
 import { conversationsService } from '../services/conversations'
 import { contactsService } from '../services/contacts'
+import { teamService } from '../services/team'
+import type { TeamMember } from '../types/team'
 import type {
   ConversationRow,
   ConversationThread,
@@ -82,8 +88,11 @@ export default function Conversations() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
 
-  // Simulator state — "reply as contact" so you can test window-open behaviour
-  // without wiring a real webhook.
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [newLabel, setNewLabel] = useState('')
+  const [showLabelInput, setShowLabelInput] = useState(false)
+
+  // Simulator state
   const [simOpen, setSimOpen] = useState(false)
   const [simContactId, setSimContactId] = useState('')
   const [simBody, setSimBody] = useState('')
@@ -93,12 +102,14 @@ export default function Conversations() {
   const loadInbox = useCallback(async () => {
     setLoading(true)
     try {
-      const [c, ct] = await Promise.all([
+      const [c, ct, tm] = await Promise.all([
         conversationsService.list(),
         contactsService.list(),
+        teamService.list(),
       ])
       setRows(c)
       setContacts(ct)
+      setMembers(tm)
       setError('')
     } catch {
       setError('Could not load inbox.')
@@ -170,6 +181,45 @@ export default function Conversations() {
     } finally {
       setSending(false)
     }
+  }
+
+  const parseLabels = (raw: string): string[] => {
+    try { return JSON.parse(raw) } catch { return [] }
+  }
+
+  const handleAddLabel = async () => {
+    if (!selected || !newLabel.trim()) return
+    const current = parseLabels(selected.labels || '[]')
+    if (current.includes(newLabel.trim())) { setNewLabel(''); return }
+    const updated = [...current, newLabel.trim()]
+    await conversationsService.update(selected.id, { labels: updated })
+    setRows(prev => prev.map(r => r.id === selected.id ? { ...r, labels: JSON.stringify(updated) } : r))
+    setSelected(prev => prev ? { ...prev, labels: JSON.stringify(updated) } : prev)
+    setNewLabel('')
+    setShowLabelInput(false)
+  }
+
+  const handleRemoveLabel = async (label: string) => {
+    if (!selected) return
+    const current = parseLabels(selected.labels || '[]')
+    const updated = current.filter(l => l !== label)
+    await conversationsService.update(selected.id, { labels: updated })
+    setRows(prev => prev.map(r => r.id === selected.id ? { ...r, labels: JSON.stringify(updated) } : r))
+    setSelected(prev => prev ? { ...prev, labels: JSON.stringify(updated) } : prev)
+  }
+
+  const handleAssign = async (memberId: string, memberName: string) => {
+    if (!selected) return
+    await conversationsService.update(selected.id, { assigned_to: memberId, assigned_name: memberName })
+    setRows(prev => prev.map(r => r.id === selected.id ? { ...r, assigned_to: memberId, assigned_name: memberName } : r))
+    setSelected(prev => prev ? { ...prev, assigned_to: memberId, assigned_name: memberName } : prev)
+  }
+
+  const handleUnassign = async () => {
+    if (!selected) return
+    await conversationsService.update(selected.id, { assigned_to: '' })
+    setRows(prev => prev.map(r => r.id === selected.id ? { ...r, assigned_to: null, assigned_name: null } : r))
+    setSelected(prev => prev ? { ...prev, assigned_to: null, assigned_name: null } : prev)
   }
 
   const handleSimulateInbound = async (e: FormEvent) => {
@@ -245,11 +295,21 @@ export default function Conversations() {
                       <p className="text-xs text-gray-500 truncate">
                         {r.contact_phone_number} · {r.channel}
                       </p>
-                      {r.unread_count > 0 && (
-                        <span className="mt-1 inline-block rounded-full bg-primary-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                          {r.unread_count}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        {r.unread_count > 0 && (
+                          <span className="inline-block rounded-full bg-primary-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                            {r.unread_count}
+                          </span>
+                        )}
+                        {parseLabels(r.labels || '[]').map(l => (
+                          <span key={l} className="inline-block rounded-full bg-amber-100 text-amber-700 px-1.5 py-0.5 text-[10px] font-medium">{l}</span>
+                        ))}
+                        {r.assigned_name && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-blue-50 text-blue-600 px-1.5 py-0.5 text-[10px] font-medium">
+                            <UserCheck size={8} />{r.assigned_name}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </button>
@@ -297,6 +357,53 @@ export default function Conversations() {
                     <Lock size={12} /> Window closed
                   </span>
                 ))}
+            </div>
+
+            {/* Labels & Assignment bar */}
+            <div className="border-b border-gray-200 bg-white px-6 py-2 flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Tag size={12} className="text-gray-400" />
+                {parseLabels(selected.labels || '[]').map(l => (
+                  <span key={l} className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs font-medium">
+                    {l}
+                    <button onClick={() => handleRemoveLabel(l)} className="hover:text-amber-900"><X size={10} /></button>
+                  </span>
+                ))}
+                {showLabelInput ? (
+                  <span className="inline-flex items-center gap-1">
+                    <input
+                      autoFocus
+                      value={newLabel}
+                      onChange={e => setNewLabel(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAddLabel(); if (e.key === 'Escape') setShowLabelInput(false) }}
+                      placeholder="Label…"
+                      className="w-20 rounded border border-gray-300 px-1.5 py-0.5 text-xs outline-none focus:border-primary-500"
+                    />
+                    <button onClick={handleAddLabel} className="text-xs text-primary-600 font-medium">Add</button>
+                  </span>
+                ) : (
+                  <button onClick={() => setShowLabelInput(true)} className="inline-flex items-center gap-0.5 text-xs text-gray-400 hover:text-primary-600">
+                    <Plus size={10} /> Label
+                  </button>
+                )}
+              </div>
+              <div className="ml-auto flex items-center gap-1.5">
+                <UserCheck size={12} className="text-gray-400" />
+                <select
+                  value={selected.assigned_to || ''}
+                  onChange={e => {
+                    const m = members.find(m => m.id === e.target.value)
+                    if (m) handleAssign(m.id, m.name || m.email)
+                    else if (e.target.value === '') handleUnassign()
+                  }}
+                  className="rounded border border-gray-300 px-2 py-0.5 text-xs outline-none bg-white cursor-pointer"
+                >
+                  <option value="">Unassigned</option>
+                  {members.filter(m => m.status === 'active').map(m => (
+                    <option key={m.id} value={m.id}>{m.name || m.email}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Messages */}

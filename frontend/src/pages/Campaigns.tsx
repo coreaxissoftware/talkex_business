@@ -13,6 +13,7 @@ import {
   Clock,
   Send,
   X,
+  BarChart3,
 } from 'lucide-react'
 import { campaignsService } from '../services/campaigns'
 import { templatesService } from '../services/templates'
@@ -91,6 +92,7 @@ export default function Campaigns() {
   const [formError, setFormError] = useState('')
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [statsCampaign, setStatsCampaign] = useState<Campaign | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -297,6 +299,13 @@ export default function Campaigns() {
                             </>
                           ) : (
                             <>
+                              <button
+                                onClick={() => setStatsCampaign(c)}
+                                className="rounded-lg p-1.5 text-primary-600 hover:bg-primary-50 transition-colors"
+                                title="View Stats"
+                              >
+                                <BarChart3 size={14} />
+                              </button>
                               {canLaunch(c.status) && (
                                 <button
                                   onClick={() => handleLaunch(c)}
@@ -469,6 +478,59 @@ export default function Campaigns() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Stats modal */}
+      <Modal open={!!statsCampaign} onClose={() => setStatsCampaign(null)} title={`Stats: ${statsCampaign?.name || ''}`}>
+        {statsCampaign && (() => {
+          const c = statsCampaign
+          const stats = [
+            { label: 'Total Recipients', value: c.total_count, color: 'text-gray-700' },
+            { label: 'Sent', value: c.sent_count, color: 'text-amber-600' },
+            { label: 'Delivered', value: c.delivered_count, color: 'text-green-600' },
+            { label: 'Read', value: c.read_count, color: 'text-blue-600' },
+            { label: 'Failed', value: c.failed_count, color: 'text-red-600' },
+          ]
+          const deliveryRate = c.total_count > 0 ? ((c.delivered_count + c.read_count) / c.total_count * 100).toFixed(1) : '0.0'
+          return (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <StatusPill status={c.status} />
+                <span className="text-xs text-gray-400 capitalize">{c.channel}</span>
+                {c.started_at && <span className="text-xs text-gray-400">Started: {new Date(c.started_at).toLocaleString('en-IN')}</span>}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {stats.map(s => (
+                  <div key={s.label} className="rounded-lg border border-gray-200 p-3 text-center">
+                    <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
+                  </div>
+                ))}
+                <div className="rounded-lg border border-gray-200 p-3 text-center">
+                  <p className="text-2xl font-bold text-primary-600">{deliveryRate}%</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Delivery Rate</p>
+                </div>
+              </div>
+              {c.total_count > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-gray-700 mb-1.5">Progress</p>
+                  <div className="flex h-3 w-full overflow-hidden rounded-full bg-gray-100">
+                    <div className="bg-blue-500 transition-all" style={{ width: `${(c.read_count / c.total_count) * 100}%` }} title="Read" />
+                    <div className="bg-green-500 transition-all" style={{ width: `${(c.delivered_count / c.total_count) * 100}%` }} title="Delivered" />
+                    <div className="bg-amber-400 transition-all" style={{ width: `${((c.sent_count - c.delivered_count - c.read_count - c.failed_count) / c.total_count) * 100}%` }} title="Sent" />
+                    <div className="bg-red-500 transition-all" style={{ width: `${(c.failed_count / c.total_count) * 100}%` }} title="Failed" />
+                  </div>
+                  <div className="flex gap-4 mt-2 text-[10px]">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500" />Read</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500" />Delivered</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400" />Sent</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" />Failed</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </Modal>
     </div>
   )

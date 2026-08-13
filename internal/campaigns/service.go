@@ -149,10 +149,16 @@ func run(db *gorm.DB, c *Campaign) {
 	var ids []string
 	_ = json.Unmarshal(c.ContactIDs, &ids)
 
+	// Pre-load contacts for variable substitution.
+	var contactList []contacts.Contact
+	db.Where("id IN ?", ids).Find(&contactList)
+	contactMap := make(map[string]*contacts.Contact, len(contactList))
+	for i := range contactList {
+		contactMap[contactList[i].ID] = &contactList[i]
+	}
+
 	sent, failed := 0, 0
 	for _, cid := range ids {
-		// Poll cancellation between recipients so a Cancel takes effect
-		// without needing an interrupt mechanism.
 		var current Campaign
 		if err := db.Select("status").Where("id = ?", c.ID).First(&current).Error; err == nil {
 			if current.Status == StatusCancelled {
@@ -160,10 +166,24 @@ func run(db *gorm.DB, c *Campaign) {
 			}
 		}
 
+		// Personalize template body with contact fields.
+		body := tpl.Body
+		if ct, ok := contactMap[cid]; ok {
+			name := ""
+			if ct.Name != nil {
+				name = *ct.Name
+			}
+			email := ""
+			if ct.Email != nil {
+				email = *ct.Email
+			}
+			body = templates.RenderBody(tpl.Body, templates.ContactVars(name, ct.PhoneNumber, email))
+		}
+
 		var err error
 		if sender != nil {
 			tplID := c.TemplateID
-			err = sender(c.OwnerID, cid, c.Channel, tpl.Body, &tplID)
+			err = sender(c.OwnerID, cid, c.Channel, body, &tplID)
 		}
 		if err == nil {
 			sent++
