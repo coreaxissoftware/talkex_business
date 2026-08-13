@@ -78,6 +78,16 @@ func RegisterRoutes(r *gin.Engine) {
 		userGroup.PATCH("/me", handleUpdateMe)
 		userGroup.POST("/me/change-password", handleChangePassword)
 		userGroup.POST("/me/deactivate", handleDeactivate)
+
+		// 2FA
+		userGroup.POST("/me/2fa/setup", handle2FASetup)
+		userGroup.POST("/me/2fa/verify", handle2FAVerify)
+		userGroup.POST("/me/2fa/disable", handle2FADisable)
+
+		// Sessions
+		userGroup.GET("/me/sessions", handleListSessions)
+		userGroup.DELETE("/me/sessions/:sid", handleRevokeSession)
+		userGroup.POST("/me/sessions/revoke-all", handleRevokeAllSessions)
 	}
 }
 
@@ -304,4 +314,144 @@ func handleResetPassword(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "Password reset"})
+}
+
+// --- 2FA handlers ---
+
+func handle2FASetup(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	user, err := GetByID(database.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "User not found"})
+		return
+	}
+	if user.TwoFactorEnabled {
+		c.JSON(http.StatusConflict, gin.H{"detail": "2FA is already enabled"})
+		return
+	}
+
+	secret, err := auth.GenerateTOTPSecret()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Failed to generate secret"})
+		return
+	}
+
+	user.TwoFactorSecret = &secret
+	if err := database.DB.Save(user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+
+	uri := auth.TOTPProvisioningURI(secret, user.Email, "TalkExBusiness")
+	c.JSON(http.StatusOK, gin.H{
+		"secret":           secret,
+		"provisioning_uri": uri,
+	})
+}
+
+func handle2FAVerify(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	user, err := GetByID(database.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "User not found"})
+		return
+	}
+	if user.TwoFactorEnabled {
+		c.JSON(http.StatusConflict, gin.H{"detail": "2FA is already enabled"})
+		return
+	}
+	if user.TwoFactorSecret == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Call /2fa/setup first"})
+		return
+	}
+
+	var req struct {
+		Code string `json:"code" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+
+	if !auth.VerifyTOTP(*user.TwoFactorSecret, req.Code) {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid code"})
+		return
+	}
+
+	user.TwoFactorEnabled = true
+	if err := database.DB.Save(user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detail": "2FA enabled"})
+}
+
+func handle2FADisable(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	user, err := GetByID(database.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "User not found"})
+		return
+	}
+	if !user.TwoFactorEnabled {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "2FA is not enabled"})
+		return
+	}
+
+	var req struct {
+		Password string `json:"password" binding:"required"`
+		Code     string `json:"code" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+
+	if _, err := Authenticate(database.DB, user.Email, req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Incorrect password"})
+		return
+	}
+	if !auth.VerifyTOTP(*user.TwoFactorSecret, req.Code) {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid code"})
+		return
+	}
+
+	user.TwoFactorEnabled = false
+	user.TwoFactorSecret = nil
+	if err := database.DB.Save(user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detail": "2FA disabled"})
+}
+
+// --- Session handlers ---
+
+func handleListSessions(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	sessions, err := auth.ListSessions(database.DB, userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, sessions)
+}
+
+func handleRevokeSession(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	sid := c.Param("sid")
+	if err := auth.RevokeSession(database.DB, userID, sid); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detail": "Session revoked"})
+}
+
+func handleRevokeAllSessions(c *gin.Context) {
+	userID := auth.GetUserID(c)
+	if err := auth.RevokeAllSessions(database.DB, userID, ""); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"detail": "All sessions revoked"})
 }

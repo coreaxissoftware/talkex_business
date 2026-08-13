@@ -12,6 +12,7 @@ import {
   Download,
 } from 'lucide-react'
 import { analyticsService } from '../services/analytics'
+import { qualityService, type QualityStats, type QualityEvent } from '../services/quality'
 import type { AnalyticsSummary, TimeseriesPoint } from '../types/analytics'
 
 const STATUS_COLORS: Record<string, string> = {
@@ -221,6 +222,8 @@ export default function Analytics() {
   const [range, setRange] = useState(30)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [qualityStats, setQualityStats] = useState<QualityStats | null>(null)
+  const [qualityEvents, setQualityEvents] = useState<QualityEvent[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -231,6 +234,9 @@ export default function Analytics() {
       ])
       setSummary(s)
       setSeries(ts)
+      const [qs, qe] = await Promise.allSettled([qualityService.stats(), qualityService.events()])
+      if (qs.status === 'fulfilled') setQualityStats(qs.value)
+      if (qe.status === 'fulfilled') setQualityEvents(qe.value)
       setError('')
     } catch {
       setError('Could not load analytics.')
@@ -403,6 +409,73 @@ export default function Analytics() {
               )}
             </div>
           </div>
+
+          {/* Quality Rating */}
+          {qualityStats && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">Messaging Quality Rating</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-bold capitalize ${
+                    qualityStats.status === 'green' ? 'bg-green-50 text-green-700' :
+                    qualityStats.status === 'yellow' ? 'bg-yellow-50 text-yellow-700' :
+                    'bg-red-50 text-red-700'
+                  }`}>
+                    <span className={`h-2.5 w-2.5 rounded-full ${
+                      qualityStats.status === 'green' ? 'bg-green-500' :
+                      qualityStats.status === 'yellow' ? 'bg-yellow-500' :
+                      'bg-red-500'
+                    }`} />
+                    {qualityStats.status}
+                  </span>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-gray-500 mb-1">Blocks (7d)</p>
+                  <p className="text-xl font-bold text-gray-900">{qualityStats.blocks_last_7d}</p>
+                  <p className="text-[10px] text-gray-400">of {qualityStats.threshold} max before flag</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-gray-500 mb-1">Reports (7d)</p>
+                  <p className="text-xl font-bold text-gray-900">{qualityStats.reports_last_7d}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-gray-500 mb-1">Total Blocks</p>
+                  <p className="text-xl font-bold text-gray-900">{qualityStats.total_blocks}</p>
+                  <p className="text-[10px] text-gray-400">{qualityStats.total_reports} reports all-time</p>
+                </div>
+              </div>
+
+              {qualityStats.status !== 'green' && qualityStats.flagged_at && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-4">
+                  Quality flagged on {new Date(qualityStats.flagged_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}.
+                  Reduce blocks/reports to recover. Messaging may be restricted.
+                </div>
+              )}
+
+              {qualityEvents.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2">Recent Events</h3>
+                  <div className="divide-y divide-gray-50 max-h-48 overflow-y-auto">
+                    {qualityEvents.slice(0, 10).map(ev => (
+                      <div key={ev.id} className="flex items-center gap-3 py-2 text-xs">
+                        <span className={`rounded-full px-2 py-0.5 font-semibold ${
+                          ev.type === 'block' ? 'bg-red-50 text-red-700' :
+                          ev.type === 'report' ? 'bg-orange-50 text-orange-700' :
+                          'bg-green-50 text-green-700'
+                        }`}>{ev.type}</span>
+                        <span className="text-gray-600 capitalize">{ev.channel}</span>
+                        {ev.reason && <span className="text-gray-400 truncate flex-1">{ev.reason}</span>}
+                        <span className="text-gray-400 whitespace-nowrap">
+                          {new Date(ev.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       ) : null}
     </div>

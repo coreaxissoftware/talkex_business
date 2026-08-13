@@ -25,4 +25,6 @@ type User struct {
 	IsBusinessVerified bool      `gorm:"default:false;not null" json:"is_business_verified"`
 	BusinessCategory   *string   `gorm:"type:varchar(100)" json:"business_category"`
 	QualityFlaggedAt   *time.Time `json:"quality_flagged_at"`
+	TwoFactorSecret    *string    `gorm:"type:varchar(64)" json:"-"`
+	TwoFactorEnabled   bool       `gorm:"default:false;not null" json:"two_factor_enabled"`
 }

@@ -100,12 +100,18 @@ type SendFunc func(ownerID, contactID, channel, body string, templateID *string)
 // wired from main.go to fan out webhooks + notifications.
 type CompletionHook func(ownerID string, c *Campaign)
 
+// EnqueueFunc lets main.go inject the messaging.Enqueue call without a
+// direct import cycle.
+type EnqueueFunc func(ownerID, campaignID, contactID, channel, body string, templateID *string) error
+
 var (
 	sender          SendFunc
+	enqueuer        EnqueueFunc
 	onComplete      CompletionHook
 )
 
 func RegisterSender(f SendFunc)              { sender = f }
+func RegisterEnqueuer(f EnqueueFunc)         { enqueuer = f }
 func RegisterCompletionHook(h CompletionHook) { onComplete = h }
 
 // Launch flips the state to running and, if a sender is registered,
@@ -181,7 +187,10 @@ func run(db *gorm.DB, c *Campaign) {
 		}
 
 		var err error
-		if sender != nil {
+		if enqueuer != nil {
+			tplID := c.TemplateID
+			err = enqueuer(c.OwnerID, c.ID, cid, c.Channel, body, &tplID)
+		} else if sender != nil {
 			tplID := c.TemplateID
 			err = sender(c.OwnerID, cid, c.Channel, body, &tplID)
 		}

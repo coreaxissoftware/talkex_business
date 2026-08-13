@@ -1,9 +1,12 @@
 import { useState, useEffect, type FormEvent } from 'react'
-import { Settings, User, Lock, Mail, ShieldCheck, Check, Database, Plus, Trash2, X, AlertTriangle, Bell } from 'lucide-react'
+import { Settings, User, Lock, Mail, ShieldCheck, Check, Database, Plus, Trash2, X, AlertTriangle, Bell, Building2, Smartphone, Monitor, LogOut } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
-import { usersService } from '../services/users'
+import { usersService, type Session } from '../services/users'
 import { customFieldsService } from '../services/customFields'
+import { customersService } from '../services/customers'
+import { settingsService, type UserPrefs } from '../services/settings'
 import type { CustomFieldDefinition } from '../types/customField'
+import type { Customer, CustomerUpsertInput } from '../types/customer'
 import PasswordInput from '../components/PasswordInput'
 import QualityBadge from '../components/QualityBadge'
 
@@ -28,8 +31,33 @@ export default function SettingsPage() {
   const [fieldSaving, setFieldSaving] = useState(false)
   const [deletingFieldId, setDeletingFieldId] = useState<string | null>(null)
 
+  // Business profile
+  const [biz, setBiz] = useState<Customer | null>(null)
+  const [bizForm, setBizForm] = useState<CustomerUpsertInput>({ business_name: '', business_category: '' })
+  const [bizSaving, setBizSaving] = useState(false)
+  const [bizSaved, setBizSaved] = useState(false)
+  const [bizError, setBizError] = useState('')
+
+  const loadSessions = () => usersService.listSessions().then(setSessions).catch(() => {})
+
   useEffect(() => {
     customFieldsService.list().then(setFields).catch(() => {})
+    settingsService.get().then(setNotifPrefs).catch(() => {})
+    loadSessions()
+    customersService.get().then((c) => {
+      setBiz(c)
+      setBizForm({
+        business_name: c.business_name,
+        business_category: c.business_category,
+        gstin: c.gstin,
+        website: c.website,
+        address: c.address,
+        city: c.city,
+        state: c.state,
+        country: c.country,
+        phone: c.phone,
+      })
+    }).catch(() => {})
   }, [])
 
   const handleFieldCreate = async () => {
@@ -55,12 +83,30 @@ export default function SettingsPage() {
     } catch { /* ignore */ }
   }
 
-  // Notification preferences (client-side only for MVP)
-  const [notifPrefs, setNotifPrefs] = useState({
-    campaigns: true,
-    messages: true,
-    system: true,
+  // Notification preferences (backend-persisted)
+  const [notifPrefs, setNotifPrefs] = useState<UserPrefs>({
+    notif_campaigns: true,
+    notif_messages: true,
+    notif_system: true,
+    email_digest: false,
+    timezone: 'Asia/Kolkata',
+    language: 'en',
   })
+  const [notifSaving, setNotifSaving] = useState(false)
+  const [notifSaved, setNotifSaved] = useState(false)
+
+  // 2FA
+  const [tfaSecret, setTfaSecret] = useState('')
+  const [tfaUri, setTfaUri] = useState('')
+  const [tfaCode, setTfaCode] = useState('')
+  const [tfaLoading, setTfaLoading] = useState(false)
+  const [tfaError, setTfaError] = useState('')
+  const [tfaDisablePassword, setTfaDisablePassword] = useState('')
+  const [tfaDisableCode, setTfaDisableCode] = useState('')
+
+  // Sessions
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [sessionsLoading, setSessionsLoading] = useState(false)
 
   // Danger zone
   const [deactivatePassword, setDeactivatePassword] = useState('')
@@ -220,6 +266,114 @@ export default function SettingsPage() {
         </form>
       </div>
 
+      {/* Business Profile card */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+          <Building2 size={16} className="text-primary-600" />
+          Business Profile
+          {biz && (
+            <span className={`ml-auto inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+              biz.verification_status === 'verified' ? 'bg-green-50 text-green-700' :
+              biz.verification_status === 'rejected' ? 'bg-red-50 text-red-700' :
+              'bg-yellow-50 text-yellow-700'
+            }`}>
+              {biz.verification_status}
+            </span>
+          )}
+        </h2>
+
+        <form onSubmit={async (e: FormEvent) => {
+          e.preventDefault()
+          setBizError(''); setBizSaved(false); setBizSaving(true)
+          try {
+            const result = await customersService.upsert(bizForm)
+            setBiz(result); setBizSaved(true)
+            setTimeout(() => setBizSaved(false), 3000)
+          } catch (err: any) {
+            setBizError(err.response?.data?.detail || 'Could not save business profile')
+          } finally { setBizSaving(false) }
+        }} className="space-y-4">
+          {bizError && <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">{bizError}</div>}
+          {bizSaved && <div className="flex items-center gap-1.5 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700"><Check size={14} /> Business profile saved</div>}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Business Name *</label>
+              <input type="text" required value={bizForm.business_name}
+                onChange={e => setBizForm(p => ({ ...p, business_name: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                placeholder="CoreAxis Ventures" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Category</label>
+              <input type="text" value={bizForm.business_category}
+                onChange={e => setBizForm(p => ({ ...p, business_category: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                placeholder="Technology, E-commerce" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">GSTIN</label>
+              <input type="text" value={bizForm.gstin ?? ''}
+                onChange={e => setBizForm(p => ({ ...p, gstin: e.target.value || null }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                placeholder="22AAAAA0000A1Z5" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Phone</label>
+              <input type="tel" value={bizForm.phone ?? ''}
+                onChange={e => setBizForm(p => ({ ...p, phone: e.target.value || null }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                placeholder="+91 98765 43210" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Website</label>
+            <input type="url" value={bizForm.website ?? ''}
+              onChange={e => setBizForm(p => ({ ...p, website: e.target.value || null }))}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+              placeholder="https://coreaxis.cloud" />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Address</label>
+            <input type="text" value={bizForm.address ?? ''}
+              onChange={e => setBizForm(p => ({ ...p, address: e.target.value || null }))}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+              placeholder="123 Business Park, Sector 5" />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">City</label>
+              <input type="text" value={bizForm.city ?? ''}
+                onChange={e => setBizForm(p => ({ ...p, city: e.target.value || null }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">State</label>
+              <input type="text" value={bizForm.state ?? ''}
+                onChange={e => setBizForm(p => ({ ...p, state: e.target.value || null }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Country</label>
+              <input type="text" value={bizForm.country ?? 'IN'}
+                onChange={e => setBizForm(p => ({ ...p, country: e.target.value }))}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none" />
+            </div>
+          </div>
+
+          <button type="submit" disabled={bizSaving}
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 transition-colors">
+            {bizSaving ? 'Saving...' : 'Save Business Profile'}
+          </button>
+        </form>
+      </div>
+
       {/* Password card */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
@@ -271,17 +425,195 @@ export default function SettingsPage() {
           </button>
         </form>
       </div>
+      {/* Two-Factor Authentication */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+          <Smartphone size={16} className="text-primary-600" />
+          Two-Factor Authentication
+          {user?.two_factor_enabled ? (
+            <span className="ml-auto inline-flex items-center rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700">Enabled</span>
+          ) : (
+            <span className="ml-auto inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Disabled</span>
+          )}
+        </h2>
+
+        {tfaError && <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700 mb-3">{tfaError}</div>}
+
+        {!user?.two_factor_enabled ? (
+          <>
+            {!tfaSecret ? (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">Add an extra layer of security by enabling TOTP-based two-factor authentication.</p>
+                <button
+                  onClick={async () => {
+                    setTfaLoading(true); setTfaError('')
+                    try {
+                      const res = await usersService.setup2FA()
+                      setTfaSecret(res.secret)
+                      setTfaUri(res.provisioning_uri)
+                    } catch (err: any) {
+                      setTfaError(err.response?.data?.detail || 'Failed to set up 2FA')
+                    } finally { setTfaLoading(false) }
+                  }}
+                  disabled={tfaLoading}
+                  className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
+                >
+                  {tfaLoading ? 'Setting up...' : 'Enable 2FA'}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-600">Scan this secret in your authenticator app (Google Authenticator, Authy, etc.):</p>
+                <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                  <p className="text-xs text-gray-500 mb-1">Secret key (manual entry):</p>
+                  <code className="text-sm font-mono text-gray-900 break-all select-all">{tfaSecret}</code>
+                </div>
+                <div className="rounded-lg bg-gray-50 border border-gray-200 p-3">
+                  <p className="text-xs text-gray-500 mb-1">Provisioning URI:</p>
+                  <code className="text-[11px] font-mono text-gray-700 break-all select-all">{tfaUri}</code>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Enter code from your app to verify</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={tfaCode}
+                      onChange={e => setTfaCode(e.target.value)}
+                      maxLength={6}
+                      placeholder="000000"
+                      className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono text-center tracking-widest focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                    />
+                    <button
+                      onClick={async () => {
+                        setTfaLoading(true); setTfaError('')
+                        try {
+                          await usersService.verify2FA(tfaCode)
+                          await fetchUser()
+                          setTfaSecret(''); setTfaUri(''); setTfaCode('')
+                        } catch (err: any) {
+                          setTfaError(err.response?.data?.detail || 'Invalid code')
+                        } finally { setTfaLoading(false) }
+                      }}
+                      disabled={tfaLoading || tfaCode.length < 6}
+                      className="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                    >
+                      {tfaLoading ? 'Verifying...' : 'Verify & Enable'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">To disable 2FA, enter your password and a current code from your authenticator app.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Password</label>
+                <PasswordInput value={tfaDisablePassword} onChange={setTfaDisablePassword} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">2FA Code</label>
+                <input
+                  type="text"
+                  value={tfaDisableCode}
+                  onChange={e => setTfaDisableCode(e.target.value)}
+                  maxLength={6}
+                  placeholder="000000"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono tracking-widest focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                />
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                setTfaLoading(true); setTfaError('')
+                try {
+                  await usersService.disable2FA(tfaDisablePassword, tfaDisableCode)
+                  await fetchUser()
+                  setTfaDisablePassword(''); setTfaDisableCode('')
+                } catch (err: any) {
+                  setTfaError(err.response?.data?.detail || 'Failed to disable 2FA')
+                } finally { setTfaLoading(false) }
+              }}
+              disabled={tfaLoading || !tfaDisablePassword || tfaDisableCode.length < 6}
+              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50 transition-colors"
+            >
+              {tfaLoading ? 'Disabling...' : 'Disable 2FA'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Active Sessions */}
+      <div className="rounded-xl border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <Monitor size={16} className="text-primary-600" />
+            Active Sessions
+          </h2>
+          {sessions.length > 1 && (
+            <button
+              onClick={async () => {
+                setSessionsLoading(true)
+                try {
+                  await usersService.revokeAllSessions()
+                  await loadSessions()
+                } catch { /* ignore */ }
+                finally { setSessionsLoading(false) }
+              }}
+              disabled={sessionsLoading}
+              className="flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700"
+            >
+              <LogOut size={12} /> Revoke All
+            </button>
+          )}
+        </div>
+
+        {sessions.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">No active sessions found.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {sessions.map(s => (
+              <div key={s.id} className="flex items-center justify-between py-2.5">
+                <div>
+                  <p className="text-sm font-medium text-gray-900 truncate max-w-xs" title={s.user_agent}>
+                    {s.user_agent ? s.user_agent.substring(0, 60) + (s.user_agent.length > 60 ? '...' : '') : 'Unknown device'}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {s.ip_address || 'Unknown IP'} &middot; Since {new Date(s.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      await usersService.revokeSession(s.id)
+                      await loadSessions()
+                    } catch { /* ignore */ }
+                  }}
+                  className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                  title="Revoke session"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Notification Preferences */}
       <div className="rounded-xl border border-gray-200 bg-white p-6">
         <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
           <Bell size={16} className="text-primary-600" />
           Notification Preferences
         </h2>
+        {notifSaved && <div className="flex items-center gap-1.5 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-700 mb-3"><Check size={14} /> Preferences saved</div>}
         <div className="space-y-3">
           {[
-            { key: 'campaigns' as const, label: 'Campaign Completions', desc: 'When a campaign finishes sending' },
-            { key: 'messages' as const, label: 'Inbound Messages', desc: 'When a contact sends you a message' },
-            { key: 'system' as const, label: 'System Alerts', desc: 'Low balance, quality warnings, errors' },
+            { key: 'notif_campaigns' as const, label: 'Campaign Completions', desc: 'When a campaign finishes sending' },
+            { key: 'notif_messages' as const, label: 'Inbound Messages', desc: 'When a contact sends you a message' },
+            { key: 'notif_system' as const, label: 'System Alerts', desc: 'Low balance, quality warnings, errors' },
+            { key: 'email_digest' as const, label: 'Email Digest', desc: 'Daily summary email of platform activity' },
           ].map(item => (
             <label key={item.key} className="flex items-center justify-between py-2 cursor-pointer">
               <div>
@@ -297,6 +629,18 @@ export default function SettingsPage() {
             </label>
           ))}
         </div>
+        <button
+          onClick={async () => {
+            setNotifSaving(true); setNotifSaved(false)
+            try { await settingsService.save(notifPrefs); setNotifSaved(true); setTimeout(() => setNotifSaved(false), 3000) }
+            catch { /* ignore */ }
+            finally { setNotifSaving(false) }
+          }}
+          disabled={notifSaving}
+          className="mt-4 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
+        >
+          {notifSaving ? 'Saving...' : 'Save Preferences'}
+        </button>
       </div>
 
       {/* Danger Zone */}

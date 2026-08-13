@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,14 +19,22 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/channels"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/contactlists"
+	"github.com/coreaxissoftware/talkex_business/internal/customers"
 	"github.com/coreaxissoftware/talkex_business/internal/customfields"
 	"github.com/coreaxissoftware/talkex_business/internal/contacts"
 	"github.com/coreaxissoftware/talkex_business/internal/conversations"
 	"github.com/coreaxissoftware/talkex_business/internal/developers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 	"github.com/coreaxissoftware/talkex_business/internal/media"
+	"github.com/coreaxissoftware/talkex_business/internal/messaging"
+
+	// Channel connectors — imported for side-effect init() registration
+	_ "github.com/coreaxissoftware/talkex_business/internal/channels/talkex"
+	_ "github.com/coreaxissoftware/talkex_business/internal/channels/whatsapp"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/notifications"
+	"github.com/coreaxissoftware/talkex_business/internal/quality"
+	"github.com/coreaxissoftware/talkex_business/internal/settings"
 	"github.com/coreaxissoftware/talkex_business/internal/support"
 	"github.com/coreaxissoftware/talkex_business/internal/tags"
 	"github.com/coreaxissoftware/talkex_business/internal/team"
@@ -68,6 +77,12 @@ func main() {
 		&media.Media{},
 		&team.Member{},
 		&customfields.FieldDefinition{},
+		&customers.Customer{},
+		&messaging.QueuedMessage{},
+		&messaging.DeadLetter{},
+		&quality.Event{},
+		&settings.UserSettings{},
+		&auth.Session{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -82,6 +97,7 @@ func main() {
 	r.Use(gin.Logger())
 	r.Use(audit.Middleware())
 	r.Use(middleware.RateLimit(middleware.DefaultRateLimiterConfig()))
+	r.Use(middleware.Idempotency())
 
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
@@ -111,6 +127,10 @@ func main() {
 	media.RegisterRoutes(r)
 	team.RegisterRoutes(r)
 	customfields.RegisterRoutes(r)
+	customers.RegisterRoutes(r)
+	messaging.RegisterRoutes(r)
+	quality.RegisterRoutes(r)
+	settings.RegisterRoutes(r)
 	tags.RegisterRoutes(r)
 
 	// Register API-key resolver with the auth package — lets any endpoint
@@ -209,8 +229,25 @@ func main() {
 		})
 	})
 
+	// Wire campaign enqueuer through the messaging engine
+	campaigns.RegisterEnqueuer(func(ownerID, campaignID, contactID, channel, body string, templateID *string) error {
+		_, err := messaging.Enqueue(database.DB, &messaging.EnqueueInput{
+			OwnerID:    ownerID,
+			CampaignID: &campaignID,
+			ContactID:  contactID,
+			Channel:    channel,
+			Body:       body,
+			TemplateID: templateID,
+			Priority:   messaging.PriorityMarketing,
+		})
+		return err
+	})
+
 	// Background campaign scheduler — auto-launches campaigns when scheduled_at arrives
 	campaigns.StartScheduler(database.DB)
+
+	// Background messaging worker — processes queued messages every 5 seconds
+	messaging.StartWorker(database.DB, 5*time.Second, 50)
 
 	// Start
 	addr := ":" + cfg.Port
