@@ -22,6 +22,9 @@ import Billing from './pages/Billing'
 import WalletPage from './pages/WalletPage'
 import Support from './pages/Support'
 import SettingsPage from './pages/SettingsPage'
+import ContactLists from './pages/ContactLists'
+import MediaLibrary from './pages/MediaLibrary'
+import Team from './pages/Team'
 
 const router = createBrowserRouter([
   {
@@ -43,7 +46,9 @@ const router = createBrowserRouter([
           { path: '/', element: <Dashboard /> },
           { path: '/channels', element: <Channels /> },
           { path: '/contacts', element: <Contacts /> },
+          { path: '/contact-lists', element: <ContactLists /> },
           { path: '/templates', element: <Templates /> },
+          { path: '/media', element: <MediaLibrary /> },
           { path: '/campaigns', element: <Campaigns /> },
           { path: '/conversations', element: <Conversations /> },
           { path: '/automation', element: <Automation /> },
@@ -55,6 +60,7 @@ const router = createBrowserRouter([
           { path: '/wallet', element: <WalletPage /> },
           { path: '/support', element: <Support /> },
           { path: '/settings', element: <SettingsPage /> },
+          { path: '/team', element: <Team /> },
         ],
       },
     ],

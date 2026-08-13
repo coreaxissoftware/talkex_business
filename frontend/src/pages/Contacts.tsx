@@ -9,8 +9,11 @@ import {
   X,
   Clock,
   ShieldOff,
+  Upload,
+  FileUp,
 } from 'lucide-react'
 import { contactsService } from '../services/contacts'
+import api from '../services/api'
 import type { Contact, ContactCreateInput, ContactUpdateInput } from '../types/contact'
 import Modal from '../components/Modal'
 
@@ -51,6 +54,11 @@ export default function Contacts() {
   const [formError, setFormError] = useState('')
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+
+  // CSV import
+  const [showImport, setShowImport] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{ created: number; skipped: number; failed: number; errors: string[] } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -130,6 +138,27 @@ export default function Contacts() {
     }
   }
 
+  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await api.post('/contacts/import-csv', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      setImportResult(res.data)
+      await load()
+    } catch {
+      setImportResult({ created: 0, skipped: 0, failed: 1, errors: ['Upload failed'] })
+    } finally {
+      setImporting(false)
+      e.target.value = ''
+    }
+  }
+
   const filtered = contacts.filter((c) => {
     if (!search) return true
     const q = search.toLowerCase()
@@ -154,13 +183,22 @@ export default function Contacts() {
             Import, tag, and segment your contacts — shared across all channels.
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
-        >
-          <Plus size={16} />
-          Add Contact
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { setShowImport(true); setImportResult(null) }}
+            className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+          >
+            <Upload size={16} />
+            Import CSV
+          </button>
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
+          >
+            <Plus size={16} />
+            Add Contact
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -383,6 +421,60 @@ export default function Contacts() {
           </div>
         </form>
       </Modal>
+
+      {/* CSV Import Modal */}
+      {showImport && (
+        <Modal title="Import Contacts from CSV" onClose={() => setShowImport(false)}>
+          <div className="space-y-4">
+            <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-xs text-blue-700">
+              <p className="font-semibold mb-1">CSV Format</p>
+              <p>Required column: <code className="bg-blue-100 px-1 rounded">phone</code> or <code className="bg-blue-100 px-1 rounded">phone_number</code></p>
+              <p>Optional columns: <code className="bg-blue-100 px-1 rounded">name</code>, <code className="bg-blue-100 px-1 rounded">email</code>, <code className="bg-blue-100 px-1 rounded">tags</code> (semicolon-separated)</p>
+              <p className="mt-1 text-blue-500">Example: phone,name,email,tags</p>
+              <p className="text-blue-500">+919876543210,Rahul Sharma,rahul@example.com,vip;mumbai</p>
+            </div>
+
+            <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 cursor-pointer hover:border-primary-400 hover:bg-primary-50/30 transition-colors">
+              <FileUp size={32} className="text-gray-400" />
+              <span className="text-sm font-medium text-gray-600">
+                {importing ? 'Uploading...' : 'Click to select CSV file'}
+              </span>
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={handleCSVUpload}
+                disabled={importing}
+              />
+            </label>
+
+            {importResult && (
+              <div className={`rounded-lg border p-3 text-sm ${importResult.failed > 0 ? 'bg-yellow-50 border-yellow-200' : 'bg-green-50 border-green-200'}`}>
+                <p className="font-semibold text-gray-900">Import Complete</p>
+                <div className="flex gap-4 mt-1 text-xs">
+                  <span className="text-green-700">{importResult.created} created</span>
+                  <span className="text-gray-500">{importResult.skipped} skipped</span>
+                  <span className="text-red-600">{importResult.failed} failed</span>
+                </div>
+                {importResult.errors.length > 0 && (
+                  <div className="mt-2 text-xs text-red-600 max-h-24 overflow-y-auto">
+                    {importResult.errors.map((e, i) => <p key={i}>{e}</p>)}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <button
+                onClick={() => setShowImport(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

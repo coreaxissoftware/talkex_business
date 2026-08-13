@@ -17,13 +17,17 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
 	"github.com/coreaxissoftware/talkex_business/internal/channels"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
+	"github.com/coreaxissoftware/talkex_business/internal/contactlists"
+	"github.com/coreaxissoftware/talkex_business/internal/customfields"
 	"github.com/coreaxissoftware/talkex_business/internal/contacts"
 	"github.com/coreaxissoftware/talkex_business/internal/conversations"
 	"github.com/coreaxissoftware/talkex_business/internal/developers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/media"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/notifications"
 	"github.com/coreaxissoftware/talkex_business/internal/support"
+	"github.com/coreaxissoftware/talkex_business/internal/team"
 	"github.com/coreaxissoftware/talkex_business/internal/templates"
 	"github.com/coreaxissoftware/talkex_business/internal/users"
 	"github.com/coreaxissoftware/talkex_business/internal/wallet"
@@ -58,6 +62,11 @@ func main() {
 		&webhooks.Endpoint{},
 		&webhooks.Delivery{},
 		&channels.Config{},
+		&contactlists.ContactList{},
+		&contactlists.ContactListMember{},
+		&media.Media{},
+		&team.Member{},
+		&customfields.FieldDefinition{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -96,6 +105,10 @@ func main() {
 	notifications.RegisterRoutes(r)
 	webhooks.RegisterRoutes(r)
 	channels.RegisterRoutes(r)
+	contactlists.RegisterRoutes(r)
+	media.RegisterRoutes(r)
+	team.RegisterRoutes(r)
+	customfields.RegisterRoutes(r)
 
 	// Register API-key resolver with the auth package — lets any endpoint
 	// guarded by auth.AuthRequired accept a plaintext API key in place of

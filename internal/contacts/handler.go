@@ -1,7 +1,10 @@
 package contacts
 
 import (
+	"encoding/csv"
+	"io"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,6 +21,7 @@ func RegisterRoutes(r *gin.Engine) {
 		g.GET("/:id", handleGet)
 		g.PATCH("/:id", handleUpdate)
 		g.DELETE("/:id", handleDelete)
+		g.POST("/import-csv", handleImportCSV)
 	}
 }
 
@@ -91,4 +95,100 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func handleImportCSV(c *gin.Context) {
+	file, _, err := c.Request.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Missing file field"})
+		return
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	header, err := reader.Read()
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "Cannot read CSV header"})
+		return
+	}
+
+	colMap := map[string]int{}
+	for i, h := range header {
+		colMap[strings.ToLower(strings.TrimSpace(h))] = i
+	}
+
+	phoneCol, ok := colMap["phone"]
+	if !ok {
+		if idx, ok2 := colMap["phone_number"]; ok2 {
+			phoneCol = idx
+		} else {
+			c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "CSV must have a 'phone' or 'phone_number' column"})
+			return
+		}
+	}
+
+	ownerID := auth.GetUserID(c)
+	var created, skipped, failed int
+	var errors []string
+
+	for {
+		row, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			failed++
+			continue
+		}
+
+		phone := strings.TrimSpace(row[phoneCol])
+		if phone == "" {
+			skipped++
+			continue
+		}
+
+		in := &CreateInput{PhoneNumber: phone}
+
+		if idx, ok := colMap["name"]; ok && idx < len(row) {
+			val := strings.TrimSpace(row[idx])
+			if val != "" {
+				in.Name = &val
+			}
+		}
+		if idx, ok := colMap["email"]; ok && idx < len(row) {
+			val := strings.TrimSpace(row[idx])
+			if val != "" {
+				in.Email = &val
+			}
+		}
+		if idx, ok := colMap["tags"]; ok && idx < len(row) {
+			val := strings.TrimSpace(row[idx])
+			if val != "" {
+				parts := strings.Split(val, ";")
+				tags := make([]string, 0, len(parts))
+				for _, p := range parts {
+					t := strings.TrimSpace(p)
+					if t != "" {
+						tags = append(tags, t)
+					}
+				}
+				in.Tags = tags
+			}
+		}
+
+		_, createErr := Create(database.DB, ownerID, in)
+		if createErr != nil {
+			failed++
+			errors = append(errors, phone+": "+createErr.Error())
+		} else {
+			created++
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"created": created,
+		"skipped": skipped,
+		"failed":  failed,
+		"errors":  errors,
+	})
 }
