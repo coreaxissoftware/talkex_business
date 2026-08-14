@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react'
 import talkexIcon from '../assets/talkex-icon.png'
+import api from '../services/api'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -14,9 +15,7 @@ export default function ForgotPassword() {
     setError('')
     setLoading(true)
     try {
-      // TODO: Wire to backend /auth/forgot-password endpoint
-      // For now, simulate success after brief delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await api.post('/auth/forgot-password', { email })
       setSent(true)
     } catch (err: any) {
       setError(err.response?.data?.error || 'Something went wrong. Please try again.')
