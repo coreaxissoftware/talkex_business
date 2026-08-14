@@ -6,6 +6,7 @@ import talkexIcon from '../assets/talkex-icon.png'
 import SocialLoginButtons from '../components/SocialLoginButtons'
 import PasswordInput from '../components/PasswordInput'
 import Divider from '../components/Divider'
+import api from '../services/api'
 
 export default function Register() {
   const [fullName, setFullName] = useState('')
@@ -47,15 +48,22 @@ export default function Register() {
       return
     }
     setError('')
-    // TODO: Wire to backend POST /auth/otp/send { phone: countryCode + mobile }
-    setMobileOtpSent(true)
-    startTimer(setMobileTimer)
+    try {
+      await api.post('/auth/otp/send', { phone: countryCode + mobile })
+      setMobileOtpSent(true)
+      startTimer(setMobileTimer)
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to send OTP')
+    }
   }
 
-  const handleVerifyMobileOtp = () => {
-    if (mobileOtp.length >= 4) {
-      // TODO: Wire to backend POST /auth/otp/verify { phone, otp }
+  const handleVerifyMobileOtp = async () => {
+    if (mobileOtp.length < 4) return
+    try {
+      await api.post('/auth/otp/verify', { phone: countryCode + mobile, code: mobileOtp })
       setMobileVerified(true)
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Invalid OTP')
     }
   }
 
@@ -65,15 +73,22 @@ export default function Register() {
       return
     }
     setError('')
-    // TODO: Wire to backend POST /auth/otp/send { email }
-    setEmailOtpSent(true)
-    startTimer(setEmailTimer)
+    try {
+      await api.post('/auth/otp/send', { email })
+      setEmailOtpSent(true)
+      startTimer(setEmailTimer)
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to send OTP')
+    }
   }
 
-  const handleVerifyEmailOtp = () => {
-    if (emailOtp.length >= 4) {
-      // TODO: Wire to backend POST /auth/otp/verify { email, otp }
+  const handleVerifyEmailOtp = async () => {
+    if (emailOtp.length < 4) return
+    try {
+      await api.post('/auth/otp/verify', { email, code: emailOtp })
       setEmailVerified(true)
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Invalid OTP')
     }
   }
 

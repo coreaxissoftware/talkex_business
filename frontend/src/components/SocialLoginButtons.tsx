@@ -34,9 +34,11 @@ export default function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
   const label = mode === 'login' ? 'Sign in' : 'Sign up'
 
   const handleSocialLogin = (provider: string) => {
-    // TODO: Wire to backend OAuth endpoints when configured
-    // For now, redirect to backend OAuth initiation URL
-    window.location.href = `/api/auth/${provider}`
+    // Redirect to backend OAuth initiation endpoint which either
+    // redirects to the real provider (if configured) or simulates
+    // the flow in dev mode.
+    const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+    window.location.href = `${baseURL}/auth/oauth/${provider}`
   }
 
   return (

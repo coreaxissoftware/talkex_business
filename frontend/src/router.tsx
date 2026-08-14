@@ -30,6 +30,7 @@ import Tags from './pages/Tags'
 import Compliance from './pages/Compliance'
 import Organizations from './pages/Organizations'
 import ApiDocs from './pages/ApiDocs'
+import OAuthCallback from './pages/OAuthCallback'
 
 const router = createBrowserRouter([
   {
@@ -40,6 +41,7 @@ const router = createBrowserRouter([
       { path: '/register', element: <Register /> },
       { path: '/forgot-password', element: <ForgotPassword /> },
       { path: '/reset-password', element: <ResetPassword /> },
+      { path: '/oauth/callback', element: <OAuthCallback /> },
     ],
   },
   {

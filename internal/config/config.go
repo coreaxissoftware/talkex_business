@@ -26,6 +26,16 @@ type Config struct {
 	Port               string
 	Environment        string
 	CORSOrigins        []string
+
+	// OAuth provider client IDs (secrets kept server-side only)
+	OAuthGoogleClientID   string
+	OAuthGoogleSecret     string
+	OAuthFacebookClientID string
+	OAuthFacebookSecret   string
+	OAuthGitHubClientID   string
+	OAuthGitHubSecret     string
+	OAuthAppleClientID    string
+	OAuthAppleSecret      string
 }
 
 var (
@@ -45,6 +55,15 @@ func Get() *Config {
 			Port:             envOr("PORT", "8080"),
 			Environment:      envOr("ENVIRONMENT", "development"),
 			CORSOrigins:      strings.Split(envOr("CORS_ORIGINS", "http://localhost:5173"), ","),
+
+			OAuthGoogleClientID:   envOr("OAUTH_GOOGLE_CLIENT_ID", ""),
+			OAuthGoogleSecret:     envOr("OAUTH_GOOGLE_SECRET", ""),
+			OAuthFacebookClientID: envOr("OAUTH_FACEBOOK_CLIENT_ID", ""),
+			OAuthFacebookSecret:   envOr("OAUTH_FACEBOOK_SECRET", ""),
+			OAuthGitHubClientID:   envOr("OAUTH_GITHUB_CLIENT_ID", ""),
+			OAuthGitHubSecret:     envOr("OAUTH_GITHUB_SECRET", ""),
+			OAuthAppleClientID:    envOr("OAUTH_APPLE_CLIENT_ID", ""),
+			OAuthAppleSecret:      envOr("OAUTH_APPLE_SECRET", ""),
 		}
 
 		// Fail loud in non-dev environments if the JWT secret was left at
@@ -68,6 +87,22 @@ func Get() *Config {
 
 func (c *Config) IsDev() bool {
 	return c.Environment == "development"
+}
+
+// BaseURL returns the API server's public base URL (no trailing slash).
+func (c *Config) BaseURL() string {
+	if v := os.Getenv("BASE_URL"); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	return "http://localhost:" + c.Port
+}
+
+// FrontendURL returns the frontend's public URL for OAuth redirects.
+func (c *Config) FrontendURL() string {
+	if v := os.Getenv("FRONTEND_URL"); v != "" {
+		return strings.TrimRight(v, "/")
+	}
+	return "http://localhost:5173"
 }
 
 func envOr(key, fallback string) string {

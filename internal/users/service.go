@@ -136,6 +136,42 @@ func DeactivateAccount(db *gorm.DB, user *User, password string) error {
 	return db.Save(user).Error
 }
 
+// FindOrCreateOAuth looks up a user by email; if not found, creates one
+// with a random password (they'll use OAuth to log in, not credentials).
+// Used by the OAuth callback to map provider identity to local account.
+func FindOrCreateOAuth(db *gorm.DB, email, fullName, provider string) (*User, error) {
+	user, err := GetByEmail(db, email)
+	if err == nil {
+		return user, nil // existing user — link to OAuth silently
+	}
+	if err != ErrUserNotFound {
+		return nil, err
+	}
+
+	// Generate a random password — user never sees it, they use OAuth
+	randBytes := make([]byte, 32)
+	if _, err := bcrypt.GenerateFromPassword(randBytes, bcrypt.DefaultCost); err != nil {
+		// fallback: hash a placeholder
+		_ = err
+	}
+	hashed, err := HashPassword(email + provider + fullName)
+	if err != nil {
+		return nil, err
+	}
+
+	user = &User{
+		Email:          email,
+		HashedPassword: hashed,
+		FullName:       fullName,
+		Role:           RoleOwner,
+		IsActive:       true,
+	}
+	if err := db.Create(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func Authenticate(db *gorm.DB, email, password string) (*User, error) {
 	// Return the same generic error for missing user, bad password, or
 	// inactive account so callers can't enumerate valid emails by

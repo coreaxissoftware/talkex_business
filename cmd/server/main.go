@@ -28,6 +28,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 	"github.com/coreaxissoftware/talkex_business/internal/media"
 	"github.com/coreaxissoftware/talkex_business/internal/messaging"
+	"github.com/coreaxissoftware/talkex_business/internal/otp"
 
 	// Channel connectors — imported for side-effect init() registration
 	_ "github.com/coreaxissoftware/talkex_business/internal/channels/email"
@@ -149,7 +150,19 @@ func main() {
 	organizations.RegisterRoutes(r)
 	waOnboarding.RegisterRoutes(r)
 	compliance.RegisterRoutes(r)
+	otp.RegisterRoutes(r)
+	auth.RegisterOAuthRoutes(r)
 	channels.RegisterWebhookRoutes(r)
+
+	// Wire OAuth user creator — lets auth.handleOAuthCallback find/create
+	// users without importing the users package directly.
+	auth.RegisterOAuthUserCreator(func(email, fullName, provider string) (string, error) {
+		user, err := users.FindOrCreateOAuth(database.DB, email, fullName, provider)
+		if err != nil {
+			return "", err
+		}
+		return user.ID, nil
+	})
 
 	// Wire RBAC team role resolver — lets auth.RoleRequired() check
 	// team membership for role-based access control.
