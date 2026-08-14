@@ -74,17 +74,23 @@ func EnqueueBatch(db *gorm.DB, items []EnqueueInput) (int, error) {
 		if pri == 0 {
 			pri = PriorityMarketing
 		}
+		var cost, sell float64
+		if costResolver != nil {
+			cost, sell = costResolver(in.OwnerID, in.Channel)
+		}
 		msgs = append(msgs, QueuedMessage{
-			OwnerID:    in.OwnerID,
-			CampaignID: in.CampaignID,
-			ContactID:  in.ContactID,
-			Channel:    in.Channel,
-			Body:       in.Body,
-			TemplateID: in.TemplateID,
-			MediaURL:   in.MediaURL,
-			Status:     shared.StatusQueued,
-			Priority:   pri,
-			MaxRetries: 3,
+			OwnerID:        in.OwnerID,
+			CampaignID:     in.CampaignID,
+			ContactID:      in.ContactID,
+			Channel:        in.Channel,
+			Body:           in.Body,
+			TemplateID:     in.TemplateID,
+			MediaURL:       in.MediaURL,
+			Status:         shared.StatusQueued,
+			Priority:       pri,
+			MaxRetries:     3,
+			CostPerMessage: cost,
+			SellPrice:      sell,
 		})
 	}
 	if err := db.CreateInBatches(msgs, 100).Error; err != nil {
@@ -231,7 +237,7 @@ func GetCostSummary(db *gorm.DB, ownerID string) *CostSummary {
 		Group("channel").
 		Scan(&rows)
 
-	s := &CostSummary{}
+	s := &CostSummary{ByChannel: []ChannelCostBreak{}}
 	for _, r := range rows {
 		margin := r.Revenue - r.Cost
 		s.TotalCost += r.Cost

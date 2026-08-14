@@ -118,17 +118,22 @@ type EnqueueFunc func(ownerID, campaignID, contactID, channel, body string, temp
 // ApprovalChecker returns the approval threshold for an owner (0 = no approval needed).
 type ApprovalChecker func(ownerID string) int
 
+// CostLookup returns (cost, revenue) for a campaign from the messaging engine.
+type CostLookup func(campaignID string) (cost float64, revenue float64)
+
 var (
 	sender           SendFunc
 	enqueuer         EnqueueFunc
 	onComplete       CompletionHook
 	approvalChecker  ApprovalChecker
+	costLookup       CostLookup
 )
 
 func RegisterSender(f SendFunc)                { sender = f }
 func RegisterEnqueuer(f EnqueueFunc)           { enqueuer = f }
 func RegisterCompletionHook(h CompletionHook)  { onComplete = h }
 func RegisterApprovalChecker(f ApprovalChecker) { approvalChecker = f }
+func RegisterCostLookup(f CostLookup)          { costLookup = f }
 
 // Launch flips the state to running and, if a sender is registered,
 // fans out the per-recipient sends in a background goroutine so the HTTP
@@ -224,6 +229,13 @@ func run(db *gorm.DB, c *Campaign) {
 	if sent == 0 && failed > 0 {
 		finalStatus = StatusFailed
 	}
+
+	// Roll up total cost from the messaging engine
+	if costLookup != nil {
+		cost, _ := costLookup(c.ID)
+		_ = db.Model(c).UpdateColumn("total_cost", cost).Error
+	}
+
 	markCompleted(db, c, finalStatus)
 	if onComplete != nil {
 		// Re-load so caller sees the latest counters.

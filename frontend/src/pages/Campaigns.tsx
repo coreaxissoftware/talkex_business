@@ -573,6 +573,7 @@ export default function Campaigns() {
             { label: 'Delivered', value: c.delivered_count, color: 'text-green-600' },
             { label: 'Read', value: c.read_count, color: 'text-blue-600' },
             { label: 'Failed', value: c.failed_count, color: 'text-red-600' },
+            { label: 'Total Cost', value: `₹${(c.total_cost || 0).toFixed(2)}`, color: 'text-purple-600' },
           ]
           const deliveryRate = c.total_count > 0 ? ((c.delivered_count + c.read_count) / c.total_count * 100).toFixed(1) : '0.0'
           return (
@@ -585,7 +586,7 @@ export default function Campaigns() {
               <div className="grid grid-cols-2 gap-3">
                 {stats.map(s => (
                   <div key={s.label} className="rounded-lg border border-gray-200 p-3 text-center">
-                    <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                    <p className={`text-2xl font-bold ${s.color}`}>{typeof s.value === 'number' ? s.value.toLocaleString() : s.value}</p>
                     <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
                   </div>
                 ))}

@@ -379,6 +379,11 @@ func main() {
 		}
 	})
 
+	// Wire campaign cost rollup from messaging engine
+	campaigns.RegisterCostLookup(func(campaignID string) (float64, float64) {
+		return messaging.GetCampaignCost(database.DB, campaignID)
+	})
+
 	// Wire maker-checker approval threshold
 	campaigns.RegisterApprovalChecker(func(ownerID string) int {
 		_, prefs, err := settings.Get(database.DB, ownerID)
