@@ -37,6 +37,11 @@ export const campaignsService = {
     return res.data
   },
 
+  async clone(id: string): Promise<Campaign> {
+    const res = await api.post(`/campaigns/${id}/clone`)
+    return res.data
+  },
+
   async remove(id: string): Promise<void> {
     await api.delete(`/campaigns/${id}`)
   },

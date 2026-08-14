@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { Wallet, MessageSquare, Users, FileText, Send, CheckCircle2, Plus, Megaphone, ScrollText, ArrowRight } from 'lucide-react'
+import { Wallet, MessageSquare, Users, FileText, Send, CheckCircle2, Plus, Megaphone, ScrollText, ArrowRight, Radio, Phone, Mail, Smartphone, Instagram, Facebook } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { walletService } from '../services/wallet'
 import { contactsService } from '../services/contacts'
@@ -180,6 +180,52 @@ export default function Dashboard() {
           </div>
         </Link>
       </div>
+
+      {/* Channel breakdown */}
+      {summary && summary.by_channel && summary.by_channel.length > 0 && (
+        <div className="rounded-xl border bg-white shadow-sm mb-8">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h3 className="text-lg font-semibold text-gray-900">Messages by Channel</h3>
+          </div>
+          <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {summary.by_channel.map((ch) => {
+              const channelIcons: Record<string, typeof Radio> = {
+                talkex: Radio,
+                whatsapp: Phone,
+                telegram: Send,
+                email: Mail,
+                sms: Smartphone,
+                rcs: MessageSquare,
+                instagram: Instagram,
+                messenger: Facebook,
+              }
+              const channelColors: Record<string, string> = {
+                talkex: 'text-primary-600 bg-primary-50',
+                whatsapp: 'text-green-600 bg-green-50',
+                telegram: 'text-blue-600 bg-blue-50',
+                email: 'text-gray-600 bg-gray-50',
+                sms: 'text-violet-600 bg-violet-50',
+                rcs: 'text-cyan-600 bg-cyan-50',
+                instagram: 'text-fuchsia-600 bg-fuchsia-50',
+                messenger: 'text-indigo-600 bg-indigo-50',
+              }
+              const Icon = channelIcons[ch.channel] || MessageSquare
+              const color = channelColors[ch.channel] || 'text-gray-600 bg-gray-50'
+              return (
+                <div key={ch.channel} className="flex items-center gap-3 rounded-lg border border-gray-100 p-3">
+                  <div className={`rounded-lg p-2 ${color}`}>
+                    <Icon size={18} />
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-gray-900">{ch.count.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 capitalize">{ch.channel}</p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Recent activity */}
       <div className="rounded-xl border bg-white shadow-sm">

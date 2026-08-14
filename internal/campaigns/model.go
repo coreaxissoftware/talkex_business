@@ -38,6 +38,9 @@ type Campaign struct {
 	StartedAt   *time.Time `json:"started_at"`
 	CompletedAt *time.Time `json:"completed_at"`
 
+	// ListID — optional reference to the contact list used to create this campaign.
+	ListID *string `gorm:"type:varchar(36)" json:"list_id"`
+
 	// ContactIDs is stored as JSON — a campaign snapshots the recipient list
 	// at creation time so later edits to contacts (add/remove/opt-out) don't
 	// silently change what a scheduled campaign will send to.

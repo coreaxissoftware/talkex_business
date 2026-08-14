@@ -19,13 +19,17 @@ import {
   Ban,
   ThumbsUp,
   ThumbsDown,
+  Copy,
+  ListChecks,
 } from 'lucide-react'
 import { campaignsService } from '../services/campaigns'
 import { templatesService } from '../services/templates'
 import { contactsService } from '../services/contacts'
+import { contactListsService } from '../services/contactLists'
 import type { Campaign, CampaignStatus, CampaignCreateInput } from '../types/campaign'
 import type { MessageTemplate } from '../types/template'
 import type { Contact } from '../types/contact'
+import type { ContactList } from '../types/contactList'
 import Modal from '../components/Modal'
 
 const STATUS_STYLE: Record<CampaignStatus, { bg: string; text: string; label: string; Icon: typeof Clock }> = {
@@ -71,10 +75,14 @@ function ProgressBar({ campaign }: { campaign: Campaign }) {
   )
 }
 
+type RecipientMode = 'individual' | 'list'
+
 interface FormState {
   name: string
   template_id: string
   contact_ids: Set<string>
+  recipient_mode: RecipientMode
+  list_id: string
   schedule: boolean
   scheduled_at: string
 }
@@ -83,6 +91,8 @@ const emptyForm: FormState = {
   name: '',
   template_id: '',
   contact_ids: new Set(),
+  recipient_mode: 'individual',
+  list_id: '',
   schedule: false,
   scheduled_at: '',
 }
@@ -91,6 +101,7 @@ export default function Campaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [templates, setTemplates] = useState<MessageTemplate[]>([])
   const [contacts, setContacts] = useState<Contact[]>([])
+  const [contactLists, setContactLists] = useState<ContactList[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -107,14 +118,16 @@ export default function Campaigns() {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [c, t, ct] = await Promise.all([
+      const [c, t, ct, cl] = await Promise.all([
         campaignsService.list(),
         templatesService.list(),
         contactsService.list(),
+        contactListsService.list(),
       ])
       setCampaigns(c)
       setTemplates(t)
       setContacts(ct)
+      setContactLists(cl)
       setError('')
     } catch {
       setError('Could not load campaigns.')
@@ -134,7 +147,7 @@ export default function Campaigns() {
   }, [templates])
 
   const openCreate = () => {
-    setForm({ ...emptyForm, contact_ids: new Set() })
+    setForm({ ...emptyForm, contact_ids: new Set(), recipient_mode: 'individual', list_id: '' })
     setFormError('')
     setModalOpen(true)
   }
@@ -164,8 +177,12 @@ export default function Campaigns() {
       setFormError('Please select a template')
       return
     }
-    if (form.contact_ids.size === 0) {
+    if (form.recipient_mode === 'individual' && form.contact_ids.size === 0) {
       setFormError('Please select at least one contact')
+      return
+    }
+    if (form.recipient_mode === 'list' && !form.list_id) {
+      setFormError('Please select a contact list')
       return
     }
     setSaving(true)
@@ -173,7 +190,8 @@ export default function Campaigns() {
       const payload: CampaignCreateInput = {
         name: form.name,
         template_id: form.template_id,
-        contact_ids: Array.from(form.contact_ids),
+        contact_ids: form.recipient_mode === 'individual' ? Array.from(form.contact_ids) : [],
+        list_id: form.recipient_mode === 'list' ? form.list_id : null,
         scheduled_at: form.schedule && form.scheduled_at
           ? new Date(form.scheduled_at).toISOString()
           : null,
@@ -234,6 +252,15 @@ export default function Campaigns() {
       setRejectReason('')
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Could not reject campaign')
+    }
+  }
+
+  const handleClone = async (c: Campaign) => {
+    try {
+      const cloned = await campaignsService.clone(c.id)
+      setCampaigns((prev) => [cloned, ...prev])
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Could not clone campaign')
     }
   }
 
@@ -335,6 +362,13 @@ export default function Campaigns() {
                                 title="View Stats"
                               >
                                 <BarChart3 size={14} />
+                              </button>
+                              <button
+                                onClick={() => handleClone(c)}
+                                className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 transition-colors"
+                                title="Duplicate"
+                              >
+                                <Copy size={14} />
                               </button>
                               {c.status === 'pending_approval' && (
                                 <>
@@ -442,49 +476,95 @@ export default function Campaigns() {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-medium text-gray-700">
-                <Users size={12} className="inline mr-1" />
-                Recipients <span className="text-red-500">*</span>
-              </label>
-              {contacts.length > 0 && (
-                <button
-                  type="button"
-                  onClick={toggleAllContacts}
-                  className="text-xs font-medium text-primary-600 hover:underline"
-                >
-                  {form.contact_ids.size === contacts.length ? 'Clear all' : 'Select all'}
-                </button>
-              )}
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              <Users size={12} className="inline mr-1" />
+              Recipients <span className="text-red-500">*</span>
+            </label>
+            {/* Mode toggle */}
+            <div className="flex rounded-lg border border-gray-200 mb-3 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, recipient_mode: 'individual' })}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${form.recipient_mode === 'individual' ? 'bg-primary-50 text-primary-700 border-r border-gray-200' : 'text-gray-500 hover:bg-gray-50 border-r border-gray-200'}`}
+              >
+                <Users size={12} />
+                Individual Contacts
+              </button>
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, recipient_mode: 'list' })}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium transition-colors ${form.recipient_mode === 'list' ? 'bg-primary-50 text-primary-700' : 'text-gray-500 hover:bg-gray-50'}`}
+              >
+                <ListChecks size={12} />
+                Contact List
+              </button>
             </div>
-            {contacts.length === 0 ? (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                No contacts yet. Add some in Contacts first.
-              </p>
-            ) : (
-              <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
-                {contacts.map((c) => (
-                  <label
-                    key={c.id}
-                    className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+
+            {form.recipient_mode === 'list' ? (
+              <>
+                {contactLists.length === 0 ? (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    No contact lists yet. Create one in Contact Lists first.
+                  </p>
+                ) : (
+                  <select
+                    value={form.list_id}
+                    onChange={(e) => setForm({ ...form, list_id: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none cursor-pointer bg-white"
                   >
-                    <input
-                      type="checkbox"
-                      checked={form.contact_ids.has(c.id)}
-                      onChange={() => toggleContact(c.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-gray-900 truncate">{c.name || c.phone_number}</p>
-                      <p className="text-xs text-gray-400 font-mono">{c.phone_number}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
+                    <option value="">Select a contact list…</option>
+                    {contactLists.map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name} ({l.member_count} members)
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs text-gray-500">Select contacts</span>
+                  {contacts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={toggleAllContacts}
+                      className="text-xs font-medium text-primary-600 hover:underline"
+                    >
+                      {form.contact_ids.size === contacts.length ? 'Clear all' : 'Select all'}
+                    </button>
+                  )}
+                </div>
+                {contacts.length === 0 ? (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    No contacts yet. Add some in Contacts first.
+                  </p>
+                ) : (
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+                    {contacts.map((c) => (
+                      <label
+                        key={c.id}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={form.contact_ids.has(c.id)}
+                          onChange={() => toggleContact(c.id)}
+                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm text-gray-900 truncate">{c.name || c.phone_number}</p>
+                          <p className="text-xs text-gray-400 font-mono">{c.phone_number}</p>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <p className="mt-1.5 text-xs text-gray-500">
+                  {form.contact_ids.size} of {contacts.length} selected
+                </p>
+              </>
             )}
-            <p className="mt-1.5 text-xs text-gray-500">
-              {form.contact_ids.size} of {contacts.length} selected
-            </p>
           </div>
 
           <div>

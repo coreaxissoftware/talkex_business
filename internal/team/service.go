@@ -69,6 +69,17 @@ func UpdateRole(db *gorm.DB, m *Member, role string) (*Member, error) {
 	return m, db.Save(m).Error
 }
 
+// GetByUserID finds a team membership by the linked user_id (after accepting
+// an invite). Returns nil if the user is not on any team.
+func GetByUserID(db *gorm.DB, userID string) (*Member, error) {
+	var m Member
+	err := db.Where("user_id = ? AND status = ?", userID, StatusActive).First(&m).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return &m, err
+}
+
 func Remove(db *gorm.DB, m *Member) error {
 	return db.Delete(m).Error
 }

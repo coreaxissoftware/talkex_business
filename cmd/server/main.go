@@ -149,6 +149,17 @@ func main() {
 	organizations.RegisterRoutes(r)
 	waOnboarding.RegisterRoutes(r)
 	compliance.RegisterRoutes(r)
+	channels.RegisterWebhookRoutes(r)
+
+	// Wire RBAC team role resolver — lets auth.RoleRequired() check
+	// team membership for role-based access control.
+	auth.RegisterTeamRoleResolver(func(userID string) (string, bool, string) {
+		m, err := team.GetByUserID(database.DB, userID)
+		if err != nil || m == nil {
+			return "", false, ""
+		}
+		return m.Role, true, m.OwnerID
+	})
 
 	// Register API-key resolver with the auth package — lets any endpoint
 	// guarded by auth.AuthRequired accept a plaintext API key in place of
@@ -382,6 +393,11 @@ func main() {
 	// Wire campaign cost rollup from messaging engine
 	campaigns.RegisterCostLookup(func(campaignID string) (float64, float64) {
 		return messaging.GetCampaignCost(database.DB, campaignID)
+	})
+
+	// Wire contact list member getter for list-based campaign targeting
+	campaigns.RegisterListMemberGetter(func(listID string) ([]string, error) {
+		return contactlists.GetMembers(database.DB, listID)
 	})
 
 	// Wire maker-checker approval threshold

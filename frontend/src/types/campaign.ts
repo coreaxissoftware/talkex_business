@@ -19,6 +19,7 @@ export interface Campaign {
   scheduled_at: string | null
   started_at: string | null
   completed_at: string | null
+  list_id: string | null
   contact_ids: string[]
   total_count: number
   sent_count: number
@@ -40,5 +41,6 @@ export interface CampaignCreateInput {
   name: string
   template_id: string
   contact_ids: string[]
+  list_id?: string | null
   scheduled_at?: string | null
 }

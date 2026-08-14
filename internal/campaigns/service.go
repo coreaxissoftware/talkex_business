@@ -37,11 +37,38 @@ func GetByID(db *gorm.DB, ownerID, id string) (*Campaign, error) {
 type CreateInput struct {
 	Name        string     `json:"name" binding:"required"`
 	TemplateID  string     `json:"template_id" binding:"required"`
-	ContactIDs  []string   `json:"contact_ids" binding:"required"`
+	ContactIDs  []string   `json:"contact_ids"`
+	ListID      *string    `json:"list_id"`
 	ScheduledAt *time.Time `json:"scheduled_at"`
 }
 
+// ContactListMemberGetter resolves list_id → contact IDs.
+type ContactListMemberGetter func(listID string) ([]string, error)
+
+var listMemberGetter ContactListMemberGetter
+
+func RegisterListMemberGetter(f ContactListMemberGetter) { listMemberGetter = f }
+
 func Create(db *gorm.DB, ownerID string, in *CreateInput) (*Campaign, error) {
+	// If a list_id is provided, resolve it to contact IDs
+	if in.ListID != nil && *in.ListID != "" && listMemberGetter != nil {
+		memberIDs, err := listMemberGetter(*in.ListID)
+		if err != nil {
+			return nil, err
+		}
+		// Merge with any individually selected contacts (deduplicated)
+		seen := make(map[string]struct{}, len(in.ContactIDs)+len(memberIDs))
+		for _, id := range in.ContactIDs {
+			seen[id] = struct{}{}
+		}
+		for _, id := range memberIDs {
+			if _, ok := seen[id]; !ok {
+				in.ContactIDs = append(in.ContactIDs, id)
+				seen[id] = struct{}{}
+			}
+		}
+	}
+
 	if len(in.ContactIDs) == 0 {
 		return nil, ErrNoRecipients
 	}
@@ -92,6 +119,7 @@ func Create(db *gorm.DB, ownerID string, in *CreateInput) (*Campaign, error) {
 		Channel:          tpl.Channel,
 		Status:           status,
 		ScheduledAt:      in.ScheduledAt,
+		ListID:           in.ListID,
 		ContactIDs:       datatypes.JSON(ids),
 		TotalCount:       len(ownedIDs),
 		ApprovalRequired: needsApproval,
@@ -326,6 +354,23 @@ func ResumeAllPaused(db *gorm.DB, ownerID string) int {
 		Where("owner_id = ? AND status = ?", ownerID, StatusPaused).
 		Update("status", StatusRunning)
 	return int(result.RowsAffected)
+}
+
+// Clone creates a fresh draft copy of an existing campaign with a new name.
+func Clone(db *gorm.DB, c *Campaign) (*Campaign, error) {
+	clone := &Campaign{
+		OwnerID:    c.OwnerID,
+		Name:       c.Name + " (copy)",
+		TemplateID: c.TemplateID,
+		Channel:    c.Channel,
+		Status:     StatusDraft,
+		ContactIDs: c.ContactIDs,
+		TotalCount: c.TotalCount,
+	}
+	if err := db.Create(clone).Error; err != nil {
+		return nil, err
+	}
+	return clone, nil
 }
 
 func Delete(db *gorm.DB, c *Campaign) error {

@@ -20,6 +20,7 @@ func RegisterRoutes(r *gin.Engine) {
 		g.POST("/:id/cancel", handleCancel)
 		g.POST("/:id/approve", handleApprove)
 		g.POST("/:id/reject", handleReject)
+		g.POST("/:id/clone", handleClone)
 		g.DELETE("/:id", handleDelete)
 	}
 }
@@ -143,6 +144,19 @@ func handleReject(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, updated)
+}
+
+func handleClone(c *gin.Context) {
+	camp := getOwnedOrAbort(c)
+	if camp == nil {
+		return
+	}
+	cloned, err := Clone(database.DB, camp)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusCreated, cloned)
 }
 
 func handleDelete(c *gin.Context) {
