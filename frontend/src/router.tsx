@@ -27,6 +27,7 @@ import MediaLibrary from './pages/MediaLibrary'
 import Team from './pages/Team'
 import Tags from './pages/Tags'
 import Compliance from './pages/Compliance'
+import Organizations from './pages/Organizations'
 
 const router = createBrowserRouter([
   {
@@ -65,6 +66,7 @@ const router = createBrowserRouter([
           { path: '/team', element: <Team /> },
           { path: '/tags', element: <Tags /> },
           { path: '/compliance', element: <Compliance /> },
+          { path: '/organizations', element: <Organizations /> },
         ],
       },
     ],
