@@ -16,6 +16,7 @@ import type {
   TemplateUpdateInput,
 } from '../types/template'
 import Modal from '../components/Modal'
+import TemplatePreview from '../components/TemplatePreview'
 
 const CATEGORY_STYLES: Record<TemplateCategory, string> = {
   marketing: 'bg-purple-50 text-purple-700 border-purple-200',
@@ -382,6 +383,12 @@ export default function Templates() {
               >
                 <option value="talkex">TalkEx</option>
                 <option value="whatsapp">WhatsApp</option>
+                <option value="telegram">Telegram</option>
+                <option value="email">Email</option>
+                <option value="sms">SMS</option>
+                <option value="rcs">RCS</option>
+                <option value="instagram">Instagram</option>
+                <option value="messenger">Messenger</option>
               </select>
             </div>
           </div>
@@ -396,6 +403,9 @@ export default function Templates() {
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none resize-none"
               placeholder="Hi {{1}}, your order #{{2}} has been confirmed."
             />
+            {form.body && (
+              <TemplatePreview body={form.body} channel={form.channel} className="mt-2" />
+            )}
           </div>
 
           <div>

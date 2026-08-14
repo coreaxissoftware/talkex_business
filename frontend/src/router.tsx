@@ -29,6 +29,7 @@ import Team from './pages/Team'
 import Tags from './pages/Tags'
 import Compliance from './pages/Compliance'
 import Organizations from './pages/Organizations'
+import ApiDocs from './pages/ApiDocs'
 
 const router = createBrowserRouter([
   {
@@ -69,6 +70,7 @@ const router = createBrowserRouter([
           { path: '/tags', element: <Tags /> },
           { path: '/compliance', element: <Compliance /> },
           { path: '/organizations', element: <Organizations /> },
+          { path: '/api-docs', element: <ApiDocs /> },
         ],
       },
     ],

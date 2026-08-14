@@ -31,6 +31,7 @@ import type { MessageTemplate } from '../types/template'
 import type { Contact } from '../types/contact'
 import type { ContactList } from '../types/contactList'
 import Modal from '../components/Modal'
+import TemplatePreview from '../components/TemplatePreview'
 
 const STATUS_STYLE: Record<CampaignStatus, { bg: string; text: string; label: string; Icon: typeof Clock }> = {
   draft:     { bg: 'bg-gray-100',    text: 'text-gray-700',   label: 'Draft',     Icon: FileText },
@@ -472,6 +473,13 @@ export default function Campaigns() {
                   </option>
                 ))}
               </select>
+            )}
+            {form.template_id && templateById.get(form.template_id) && (
+              <TemplatePreview
+                body={templateById.get(form.template_id)!.body}
+                channel={templateById.get(form.template_id)!.channel}
+                className="mt-2"
+              />
             )}
           </div>
 

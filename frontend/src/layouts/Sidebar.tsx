@@ -23,6 +23,7 @@ import {
   UsersRound,
   ShieldCheck,
   Building,
+  Book,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -53,6 +54,7 @@ const navGroups = [
     items: [
       { to: '/automation', icon: Workflow, label: 'Automation' },
       { to: '/developers', icon: Code2, label: 'Developers' },
+      { to: '/api-docs', icon: Book, label: 'API Docs' },
       { to: '/webhooks', icon: Webhook, label: 'Webhooks' },
       { to: '/analytics', icon: BarChart3, label: 'Analytics' },
       { to: '/logs', icon: ScrollText, label: 'Logs' },

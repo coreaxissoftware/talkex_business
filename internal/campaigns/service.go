@@ -356,6 +356,61 @@ func ResumeAllPaused(db *gorm.DB, ownerID string) int {
 	return int(result.RowsAffected)
 }
 
+// UpdateInput allows editing a draft campaign before it's launched.
+type UpdateInput struct {
+	Name        *string    `json:"name"`
+	TemplateID  *string    `json:"template_id"`
+	ContactIDs  []string   `json:"contact_ids"`
+	ListID      *string    `json:"list_id"`
+	ScheduledAt *time.Time `json:"scheduled_at"`
+}
+
+// Update modifies a draft/scheduled campaign. Launched/completed campaigns
+// are immutable.
+func Update(db *gorm.DB, c *Campaign, in *UpdateInput) (*Campaign, error) {
+	if c.Status != StatusDraft && c.Status != StatusScheduled && c.Status != StatusPendingApproval {
+		return nil, ErrInvalidStatus
+	}
+	if in.Name != nil {
+		c.Name = *in.Name
+	}
+	if in.TemplateID != nil {
+		c.TemplateID = *in.TemplateID
+	}
+	if in.ListID != nil {
+		c.ListID = in.ListID
+		// Resolve list members if a getter is registered
+		if *in.ListID != "" && listMemberGetter != nil {
+			memberIDs, err := listMemberGetter(*in.ListID)
+			if err == nil {
+				// Merge with any individually provided contacts
+				seen := make(map[string]struct{})
+				for _, id := range in.ContactIDs {
+					seen[id] = struct{}{}
+				}
+				for _, id := range memberIDs {
+					if _, ok := seen[id]; !ok {
+						in.ContactIDs = append(in.ContactIDs, id)
+						seen[id] = struct{}{}
+					}
+				}
+			}
+		}
+	}
+	if in.ContactIDs != nil {
+		ids, _ := json.Marshal(in.ContactIDs)
+		c.ContactIDs = ids
+		c.TotalCount = len(in.ContactIDs)
+	}
+	if in.ScheduledAt != nil {
+		c.ScheduledAt = in.ScheduledAt
+		if in.ScheduledAt.After(time.Now()) && c.Status == StatusDraft {
+			c.Status = StatusScheduled
+		}
+	}
+	return c, db.Save(c).Error
+}
+
 // Clone creates a fresh draft copy of an existing campaign with a new name.
 func Clone(db *gorm.DB, c *Campaign) (*Campaign, error) {
 	clone := &Campaign{

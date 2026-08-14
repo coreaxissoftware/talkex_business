@@ -16,6 +16,7 @@ func RegisterRoutes(r *gin.Engine) {
 		g.GET("", handleList)
 		g.POST("", handleCreate)
 		g.GET("/:id", handleGet)
+		g.PATCH("/:id", handleUpdate)
 		g.POST("/:id/launch", handleLaunch)
 		g.POST("/:id/cancel", handleCancel)
 		g.POST("/:id/approve", handleApprove)
@@ -72,6 +73,28 @@ func handleGet(c *gin.Context) {
 	if camp := getOwnedOrAbort(c); camp != nil {
 		c.JSON(http.StatusOK, camp)
 	}
+}
+
+func handleUpdate(c *gin.Context) {
+	camp := getOwnedOrAbort(c)
+	if camp == nil {
+		return
+	}
+	var in UpdateInput
+	if err := c.ShouldBindJSON(&in); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	updated, err := Update(database.DB, camp, &in)
+	if err == ErrInvalidStatus {
+		c.JSON(http.StatusConflict, gin.H{"detail": "Only draft/scheduled campaigns can be edited"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
 }
 
 func handleLaunch(c *gin.Context) {

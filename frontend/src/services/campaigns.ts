@@ -37,6 +37,11 @@ export const campaignsService = {
     return res.data
   },
 
+  async update(id: string, data: Partial<CampaignCreateInput>): Promise<Campaign> {
+    const res = await api.patch(`/campaigns/${id}`, data)
+    return res.data
+  },
+
   async clone(id: string): Promise<Campaign> {
     const res = await api.post(`/campaigns/${id}/clone`)
     return res.data
