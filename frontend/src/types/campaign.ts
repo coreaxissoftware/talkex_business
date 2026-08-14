@@ -5,6 +5,7 @@ export type CampaignStatus =
   | 'completed'
   | 'failed'
   | 'cancelled'
+  | 'paused'
 
 export interface Campaign {
   id: string

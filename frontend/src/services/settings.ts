@@ -7,6 +7,9 @@ export interface UserPrefs {
   email_digest: boolean
   timezone: string
   language: string
+  auto_pause_enabled: boolean
+  min_balance: number
+  sandbox_mode: boolean
 }
 
 export const settingsService = {

@@ -14,6 +14,7 @@ import {
   Send,
   X,
   BarChart3,
+  Pause,
 } from 'lucide-react'
 import { campaignsService } from '../services/campaigns'
 import { templatesService } from '../services/templates'
@@ -30,6 +31,7 @@ const STATUS_STYLE: Record<CampaignStatus, { bg: string; text: string; label: st
   completed: { bg: 'bg-green-50',    text: 'text-green-700',  label: 'Completed', Icon: CheckCircle2 },
   failed:    { bg: 'bg-red-50',      text: 'text-red-700',    label: 'Failed',    Icon: XCircle },
   cancelled: { bg: 'bg-gray-100',    text: 'text-gray-500',   label: 'Cancelled', Icon: Square },
+  paused:    { bg: 'bg-orange-50',   text: 'text-orange-700', label: 'Paused',    Icon: Pause },
 }
 
 function StatusPill({ status }: { status: CampaignStatus }) {

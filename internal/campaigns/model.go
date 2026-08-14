@@ -22,6 +22,7 @@ const (
 	StatusCompleted = "completed"
 	StatusFailed    = "failed"
 	StatusCancelled = "cancelled"
+	StatusPaused    = "paused"
 )
 
 type Campaign struct {

@@ -13,14 +13,22 @@ const (
 	flagWindow    = 7 * 24 * time.Hour
 )
 
+// AlertHook is called when quality status changes (Yellow or Red).
+type AlertHook func(ownerID, status string, blocksReports int64)
+
+var alertHook AlertHook
+
+func RegisterAlertHook(h AlertHook) { alertHook = h }
+
 type Stats struct {
-	Status         string `json:"status"`
-	BlocksLast7d   int64  `json:"blocks_last_7d"`
-	ReportsLast7d  int64  `json:"reports_last_7d"`
-	TotalBlocks    int64  `json:"total_blocks"`
-	TotalReports   int64  `json:"total_reports"`
+	Status         string     `json:"status"`
+	BlocksLast7d   int64     `json:"blocks_last_7d"`
+	ReportsLast7d  int64     `json:"reports_last_7d"`
+	TotalBlocks    int64     `json:"total_blocks"`
+	TotalReports   int64     `json:"total_reports"`
 	FlaggedAt      *time.Time `json:"flagged_at"`
-	Threshold      int    `json:"threshold"`
+	Threshold      int       `json:"threshold"`
+	HealthScore    int       `json:"health_score"`
 }
 
 func GetStats(db *gorm.DB, ownerID string) (*Stats, error) {
@@ -37,14 +45,25 @@ func GetStats(db *gorm.DB, ownerID string) (*Stats, error) {
 	db.Model(&Event{}).Where("owner_id = ? AND type = ?", ownerID, EventBlock).Count(&blocksTotal)
 	db.Model(&Event{}).Where("owner_id = ? AND type = ?", ownerID, EventReport).Count(&reportsTotal)
 
+	status := users.QualityStatus(user)
+	recentEvents := blocksRecent + reportsRecent
+
+	// Health score: 100 = perfect, decreases with blocks/reports
+	// Score = max(0, 100 - (recentEvents * 15))
+	score := 100 - int(recentEvents)*15
+	if score < 0 {
+		score = 0
+	}
+
 	return &Stats{
-		Status:        users.QualityStatus(user),
+		Status:        status,
 		BlocksLast7d:  blocksRecent,
 		ReportsLast7d: reportsRecent,
 		TotalBlocks:   blocksTotal,
 		TotalReports:  reportsTotal,
 		FlaggedAt:     user.QualityFlaggedAt,
 		Threshold:     flagThreshold,
+		HealthScore:   score,
 	}, nil
 }
 
@@ -76,6 +95,15 @@ func refreshFlag(db *gorm.DB, ownerID string) {
 	if count >= flagThreshold {
 		now := time.Now()
 		db.Model(&users.User{}).Where("id = ?", ownerID).Update("quality_flagged_at", now)
+		// Fire critical alert — Red status
+		if alertHook != nil {
+			alertHook(ownerID, "red", count)
+		}
+	} else if count >= 3 {
+		// Warning alert at Yellow threshold (3+ events approaching limit)
+		if alertHook != nil {
+			alertHook(ownerID, "yellow", count)
+		}
 	}
 }
 

@@ -74,5 +74,18 @@ func handleCreateTransaction(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
 		return
 	}
+
+	// Notify post-credit hook (e.g. auto-resume paused campaigns)
+	if req.Type == Credit && onCredit != nil {
+		onCredit(userID, txn.BalanceAfter)
+	}
+
 	c.JSON(http.StatusCreated, txn)
 }
+
+// CreditHook is fired after a successful wallet credit.
+type CreditHook func(ownerID string, newBalance float64)
+
+var onCredit CreditHook
+
+func RegisterCreditHook(h CreditHook) { onCredit = h }

@@ -24,7 +24,8 @@ type Contact struct {
 	Email         *string         `gorm:"type:varchar(255)" json:"email"`
 	Tags          datatypes.JSON  `gorm:"type:json;default:'[]'" json:"tags"`
 	CustomFields  datatypes.JSON  `gorm:"type:json;default:'{}'" json:"custom_fields"`
-	OptedIn       bool            `gorm:"default:false;not null" json:"opted_in"`
-	OptedInAt     *time.Time      `json:"opted_in_at"`
-	LastInboundAt *time.Time      `json:"last_inbound_at"`
+	OptedIn         bool            `gorm:"default:false;not null" json:"opted_in"`
+	OptedInAt       *time.Time      `json:"opted_in_at"`
+	LastInboundAt   *time.Time      `json:"last_inbound_at"`
+	FallbackChannel *string         `gorm:"type:varchar(50)" json:"fallback_channel"`
 }

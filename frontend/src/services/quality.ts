@@ -8,6 +8,7 @@ export interface QualityStats {
   total_reports: number
   flagged_at: string | null
   threshold: number
+  health_score: number
 }
 
 export interface QualityEvent {

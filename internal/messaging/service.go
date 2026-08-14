@@ -20,6 +20,20 @@ type EnqueueInput struct {
 	Priority   int
 }
 
+// FallbackResolver looks up the fallback channel for a contact.
+type FallbackResolver func(ownerID, contactID string) (fallbackChannel string, ok bool)
+
+// SandboxChecker returns true if the owner has sandbox mode enabled.
+type SandboxChecker func(ownerID string) bool
+
+var (
+	fallbackResolver FallbackResolver
+	sandboxChecker   SandboxChecker
+)
+
+func RegisterFallbackResolver(f FallbackResolver) { fallbackResolver = f }
+func RegisterSandboxChecker(f SandboxChecker)      { sandboxChecker = f }
+
 func Enqueue(db *gorm.DB, in *EnqueueInput) (*QueuedMessage, error) {
 	if in.Priority == 0 {
 		in.Priority = PriorityMarketing
@@ -89,9 +103,15 @@ func ProcessQueue(db *gorm.DB, batchSize int) int {
 }
 
 func processOne(db *gorm.DB, msg *QueuedMessage) {
-	connector, ok := shared.Get(msg.Channel)
+	// Route through sandbox connector if owner has sandbox mode enabled
+	channelToUse := msg.Channel
+	if sandboxChecker != nil && sandboxChecker(msg.OwnerID) {
+		channelToUse = "sandbox"
+	}
+
+	connector, ok := shared.Get(channelToUse)
 	if !ok {
-		errMsg := "no connector registered for channel: " + msg.Channel
+		errMsg := "no connector registered for channel: " + channelToUse
 		msg.Status = shared.StatusFailed
 		msg.Error = &errMsg
 		db.Save(msg)
@@ -114,6 +134,21 @@ func processOne(db *gorm.DB, msg *QueuedMessage) {
 		errStr := err.Error()
 		msg.Error = &errStr
 		if msg.Attempts >= msg.MaxRetries {
+			// Try fallback channel before marking as permanently failed
+			if !msg.FallbackTried && fallbackResolver != nil {
+				if fbChannel, ok := fallbackResolver(msg.OwnerID, msg.ContactID); ok && fbChannel != "" && fbChannel != msg.Channel {
+					log.Printf("messaging: switching %s from %s to fallback channel %s", msg.ID, msg.Channel, fbChannel)
+					orig := msg.Channel
+					msg.OriginalChannel = &orig
+					msg.Channel = fbChannel
+					msg.FallbackTried = true
+					msg.Attempts = 0
+					msg.Status = shared.StatusQueued
+					msg.Error = nil
+					db.Save(msg)
+					return
+				}
+			}
 			msg.Status = shared.StatusFailed
 		} else {
 			backoff := time.Duration(msg.Attempts*msg.Attempts) * 30 * time.Second

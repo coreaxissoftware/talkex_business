@@ -22,8 +22,10 @@ type QueuedMessage struct {
 	Attempts   int                  `gorm:"default:0;not null" json:"attempts"`
 	MaxRetries int                  `gorm:"default:3;not null" json:"max_retries"`
 	NextRetry  *time.Time           `gorm:"index" json:"next_retry"`
-	SentAt     *time.Time           `json:"sent_at"`
-	Priority   int                  `gorm:"default:10;not null;index" json:"priority"`
+	SentAt          *time.Time           `json:"sent_at"`
+	Priority        int                  `gorm:"default:10;not null;index" json:"priority"`
+	FallbackTried   bool                 `gorm:"default:false;not null" json:"fallback_tried"`
+	OriginalChannel *string              `gorm:"type:varchar(50)" json:"original_channel"`
 }
 
 const (

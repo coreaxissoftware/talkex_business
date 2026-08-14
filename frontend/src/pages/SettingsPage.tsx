@@ -91,6 +91,9 @@ export default function SettingsPage() {
     email_digest: false,
     timezone: 'Asia/Kolkata',
     language: 'en',
+    auto_pause_enabled: false,
+    min_balance: 0,
+    sandbox_mode: false,
   })
   const [notifSaving, setNotifSaving] = useState(false)
   const [notifSaved, setNotifSaved] = useState(false)
@@ -629,6 +632,54 @@ export default function SettingsPage() {
             </label>
           ))}
         </div>
+        <div className="border-t border-gray-100 mt-4 pt-4">
+          <h3 className="text-xs font-semibold text-gray-700 mb-3">Wallet & Campaign Safety</h3>
+          <label className="flex items-center justify-between py-2 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Auto-Pause on Low Balance</p>
+              <p className="text-xs text-gray-500">Automatically pause running campaigns when wallet balance drops below threshold</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={notifPrefs.auto_pause_enabled}
+              onChange={e => setNotifPrefs(prev => ({ ...prev, auto_pause_enabled: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+          </label>
+          <label className="flex items-center justify-between py-2 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Sandbox Mode (Developer Testing)</p>
+              <p className="text-xs text-gray-500">Messages are simulated, not actually delivered. For testing only.</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={notifPrefs.sandbox_mode}
+              onChange={e => setNotifPrefs(prev => ({ ...prev, sandbox_mode: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+          </label>
+          {notifPrefs.sandbox_mode && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700 flex items-center gap-2">
+              ⚠️ Sandbox mode is active — all messages will be simulated, not delivered to real recipients.
+            </div>
+          )}
+          {notifPrefs.auto_pause_enabled && (
+            <div className="ml-0 mt-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Minimum Balance (INR)</label>
+              <input
+                type="number"
+                min="0"
+                step="10"
+                value={notifPrefs.min_balance}
+                onChange={e => setNotifPrefs(prev => ({ ...prev, min_balance: parseFloat(e.target.value) || 0 }))}
+                className="w-40 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                placeholder="e.g. 100"
+              />
+              <p className="text-[11px] text-gray-400 mt-1">Campaigns auto-resume when balance is recharged above this amount.</p>
+            </div>
+          )}
+        </div>
+
         <button
           onClick={async () => {
             setNotifSaving(true); setNotifSaved(false)

@@ -446,6 +446,33 @@ export default function Analytics() {
                 </div>
               </div>
 
+              {/* Health Score Meter */}
+              <div className="rounded-lg border p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-semibold text-gray-700">Number Health Score</p>
+                  <span className={`text-lg font-bold ${
+                    qualityStats.health_score >= 70 ? 'text-green-600' :
+                    qualityStats.health_score >= 40 ? 'text-yellow-600' :
+                    'text-red-600'
+                  }`}>{qualityStats.health_score}/100</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  <div
+                    className={`h-2.5 rounded-full transition-all ${
+                      qualityStats.health_score >= 70 ? 'bg-green-500' :
+                      qualityStats.health_score >= 40 ? 'bg-yellow-500' :
+                      'bg-red-500'
+                    }`}
+                    style={{ width: `${qualityStats.health_score}%` }}
+                  />
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {qualityStats.health_score >= 70 ? 'Healthy — your number is in good standing' :
+                   qualityStats.health_score >= 40 ? 'Warning — quality declining, review messaging practices' :
+                   'Critical — number at risk of ban, stop marketing immediately'}
+                </p>
+              </div>
+
               {qualityStats.status !== 'green' && qualityStats.flagged_at && (
                 <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-xs text-red-700 mb-4">
                   Quality flagged on {new Date(qualityStats.flagged_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}.

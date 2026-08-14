@@ -12,10 +12,13 @@ type UserSettings struct {
 }
 
 type PrefsData struct {
-	NotifCampaigns bool `json:"notif_campaigns"`
-	NotifMessages  bool `json:"notif_messages"`
-	NotifSystem    bool `json:"notif_system"`
-	EmailDigest    bool `json:"email_digest"`
-	Timezone       string `json:"timezone"`
-	Language       string `json:"language"`
+	NotifCampaigns   bool    `json:"notif_campaigns"`
+	NotifMessages    bool    `json:"notif_messages"`
+	NotifSystem      bool    `json:"notif_system"`
+	EmailDigest      bool    `json:"email_digest"`
+	Timezone         string  `json:"timezone"`
+	Language         string  `json:"language"`
+	AutoPauseEnabled bool    `json:"auto_pause_enabled"`
+	MinBalance       float64 `json:"min_balance"`
+	SandboxMode      bool    `json:"sandbox_mode"`
 }

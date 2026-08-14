@@ -29,8 +29,9 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/messaging"
 
 	// Channel connectors — imported for side-effect init() registration
+	_ "github.com/coreaxissoftware/talkex_business/internal/channels/sandbox"
 	_ "github.com/coreaxissoftware/talkex_business/internal/channels/talkex"
-	_ "github.com/coreaxissoftware/talkex_business/internal/channels/whatsapp"
+	waOnboarding "github.com/coreaxissoftware/talkex_business/internal/channels/whatsapp"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/notifications"
 	"github.com/coreaxissoftware/talkex_business/internal/quality"
@@ -83,6 +84,7 @@ func main() {
 		&quality.Event{},
 		&settings.UserSettings{},
 		&auth.Session{},
+		&waOnboarding.Onboarding{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -132,6 +134,7 @@ func main() {
 	quality.RegisterRoutes(r)
 	settings.RegisterRoutes(r)
 	tags.RegisterRoutes(r)
+	waOnboarding.RegisterRoutes(r)
 
 	// Register API-key resolver with the auth package — lets any endpoint
 	// guarded by auth.AuthRequired accept a plaintext API key in place of
@@ -241,6 +244,97 @@ func main() {
 			Priority:   messaging.PriorityMarketing,
 		})
 		return err
+	})
+
+	// Auto-resume paused campaigns when wallet is recharged above threshold
+	wallet.RegisterCreditHook(func(ownerID string, newBalance float64) {
+		_, prefs, err := settings.Get(database.DB, ownerID)
+		if err != nil || !prefs.AutoPauseEnabled || prefs.MinBalance <= 0 {
+			return
+		}
+		if newBalance >= prefs.MinBalance {
+			resumed := campaigns.ResumeAllPaused(database.DB, ownerID)
+			if resumed > 0 {
+				notifications.Emit(database.DB, notifications.EmitInput{
+					OwnerID: ownerID,
+					Type:    notifications.TypeSuccess,
+					Title:   "Campaigns auto-resumed",
+					Body:    fmt.Sprintf("Wallet recharged to %.2f. %d paused campaign(s) resumed.", newBalance, resumed),
+					Link:    "/campaigns",
+				})
+			}
+		}
+	})
+
+	// Wire sandbox mode checker for messaging engine
+	messaging.RegisterSandboxChecker(func(ownerID string) bool {
+		_, prefs, err := settings.Get(database.DB, ownerID)
+		if err != nil {
+			return false
+		}
+		return prefs.SandboxMode
+	})
+
+	// Wire fallback channel resolver for messaging retry
+	messaging.RegisterFallbackResolver(func(ownerID, contactID string) (string, bool) {
+		var c contacts.Contact
+		if err := database.DB.Where("id = ? AND owner_id = ?", contactID, ownerID).First(&c).Error; err != nil {
+			return "", false
+		}
+		if c.FallbackChannel == nil || *c.FallbackChannel == "" {
+			return "", false
+		}
+		return *c.FallbackChannel, true
+	})
+
+	// Wire wallet balance checker for messaging auto-pause
+	messaging.RegisterWalletChecker(func(ownerID string) (float64, float64, bool) {
+		w, err := wallet.GetOrCreateWallet(database.DB, ownerID)
+		if err != nil {
+			return 0, 0, false
+		}
+		_, prefs, err := settings.Get(database.DB, ownerID)
+		if err != nil {
+			return w.Balance, 0, false
+		}
+		return w.Balance, prefs.MinBalance, prefs.AutoPauseEnabled
+	})
+
+	messaging.RegisterPauseCallback(func(ownerID string, balance float64) {
+		paused := campaigns.PauseAllRunning(database.DB, ownerID)
+		if paused > 0 {
+			notifications.Emit(database.DB, notifications.EmitInput{
+				OwnerID: ownerID,
+				Type:    notifications.TypeWarning,
+				Title:   "Campaigns auto-paused",
+				Body:    fmt.Sprintf("Wallet balance (%.2f) is below minimum threshold. %d campaign(s) paused.", balance, paused),
+				Link:    "/wallet",
+			})
+		}
+	})
+
+	// Quality health alert hook — fires notifications + webhooks on status changes
+	quality.RegisterAlertHook(func(ownerID, status string, count int64) {
+		if status == "red" {
+			notifications.Emit(database.DB, notifications.EmitInput{
+				OwnerID: ownerID,
+				Type:    notifications.TypeError,
+				Title:   "⚠️ Critical: Number at risk of ban",
+				Body:    fmt.Sprintf("Quality rating is RED with %d blocks/reports in 7 days. Messaging may be restricted.", count),
+				Link:    "/analytics",
+			})
+			webhooks.Deliver(database.DB, ownerID, "quality.critical", map[string]interface{}{
+				"status": status, "events_7d": count,
+			})
+		} else if status == "yellow" {
+			notifications.Emit(database.DB, notifications.EmitInput{
+				OwnerID: ownerID,
+				Type:    notifications.TypeWarning,
+				Title:   "Quality rating declining",
+				Body:    fmt.Sprintf("You have %d blocks/reports in 7 days. Review your messaging to avoid restrictions.", count),
+				Link:    "/analytics",
+			})
+		}
 	})
 
 	// Background campaign scheduler — auto-launches campaigns when scheduled_at arrives

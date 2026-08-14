@@ -9,6 +9,7 @@ export interface Contact {
   opted_in: boolean
   opted_in_at: string | null
   last_inbound_at: string | null
+  fallback_channel: string | null
   created_at: string
   updated_at: string
 }
@@ -19,6 +20,7 @@ export interface ContactCreateInput {
   email?: string | null
   tags?: string[]
   custom_fields?: Record<string, unknown>
+  fallback_channel?: string | null
 }
 
 export interface ContactUpdateInput {
@@ -26,4 +28,5 @@ export interface ContactUpdateInput {
   email?: string | null
   tags?: string[]
   custom_fields?: Record<string, unknown>
+  fallback_channel?: string | null
 }

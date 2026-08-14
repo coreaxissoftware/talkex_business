@@ -120,7 +120,7 @@ func RegisterCompletionHook(h CompletionHook) { onComplete = h }
 // If no sender is wired (dev environment without a connector), the
 // campaign still transitions correctly so the UI reflects it.
 func Launch(db *gorm.DB, c *Campaign) (*Campaign, error) {
-	if c.Status != StatusDraft && c.Status != StatusScheduled {
+	if c.Status != StatusDraft && c.Status != StatusScheduled && c.Status != StatusPaused {
 		return nil, ErrInvalidStatus
 	}
 	now := time.Now()
@@ -236,6 +236,34 @@ func Cancel(db *gorm.DB, c *Campaign) (*Campaign, error) {
 		return nil, err
 	}
 	return c, nil
+}
+
+// Pause moves a running campaign into paused state (e.g. low wallet balance).
+func Pause(db *gorm.DB, c *Campaign) (*Campaign, error) {
+	if c.Status != StatusRunning {
+		return nil, ErrInvalidStatus
+	}
+	c.Status = StatusPaused
+	if err := db.Save(c).Error; err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// PauseAllRunning pauses all running campaigns for an owner. Returns count.
+func PauseAllRunning(db *gorm.DB, ownerID string) int {
+	result := db.Model(&Campaign{}).
+		Where("owner_id = ? AND status = ?", ownerID, StatusRunning).
+		Update("status", StatusPaused)
+	return int(result.RowsAffected)
+}
+
+// ResumeAllPaused moves all paused campaigns back to running for an owner.
+func ResumeAllPaused(db *gorm.DB, ownerID string) int {
+	result := db.Model(&Campaign{}).
+		Where("owner_id = ? AND status = ?", ownerID, StatusPaused).
+		Update("status", StatusRunning)
+	return int(result.RowsAffected)
 }
 
 func Delete(db *gorm.DB, c *Campaign) error {
