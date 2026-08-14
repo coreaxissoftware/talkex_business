@@ -28,43 +28,57 @@ var Catalog = []CatalogItem{
 		Kind:        KindTalkEx,
 		DisplayName: "TalkEx",
 		Description: "First-party channel powered by the TalkEx consumer app.",
-		Implemented: false, // scaffolded; real send/receive comes later.
+		Implemented: true,
 		Icon:        "radio",
 	},
 	{
 		Kind:        KindWhatsApp,
 		DisplayName: "WhatsApp Business",
 		Description: "Cloud API integration for 2B+ WhatsApp users worldwide.",
-		Implemented: false,
+		Implemented: true,
 		Icon:        "message-circle",
 	},
 	{
 		Kind:        KindTelegram,
 		DisplayName: "Telegram",
 		Description: "Bot API for one-to-many broadcasts and 2-way chat.",
-		Implemented: false,
+		Implemented: true,
 		Icon:        "send",
 	},
 	{
 		Kind:        KindEmail,
 		DisplayName: "Email",
 		Description: "Transactional and campaign email via SMTP or provider.",
-		Implemented: false,
+		Implemented: true,
 		Icon:        "mail",
 	},
 	{
 		Kind:        KindSMS,
 		DisplayName: "SMS",
 		Description: "Reach any mobile number via aggregator SMPP or REST.",
-		Implemented: false,
+		Implemented: false, // requires SMPP aggregator integration
 		Icon:        "smartphone",
 	},
 	{
 		Kind:        KindRCS,
 		DisplayName: "RCS Business Messaging",
 		Description: "Rich, branded messaging for Android users.",
-		Implemented: false,
+		Implemented: true,
 		Icon:        "message-square",
+	},
+	{
+		Kind:        KindInstagram,
+		DisplayName: "Instagram DM",
+		Description: "Engage customers through Instagram Direct Messages.",
+		Implemented: true,
+		Icon:        "instagram",
+	},
+	{
+		Kind:        KindMessenger,
+		DisplayName: "Messenger",
+		Description: "Reach users on Facebook Messenger with rich messages.",
+		Implemented: true,
+		Icon:        "facebook",
 	},
 }
 

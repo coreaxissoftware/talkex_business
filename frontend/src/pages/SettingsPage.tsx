@@ -98,9 +98,19 @@ export default function SettingsPage() {
     cost_whatsapp: 0,
     cost_sms: 0,
     cost_talkex: 0,
+    cost_telegram: 0,
+    cost_email: 0,
+    cost_rcs: 0,
+    cost_instagram: 0,
+    cost_messenger: 0,
     sell_whatsapp: 0,
     sell_sms: 0,
     sell_talkex: 0,
+    sell_telegram: 0,
+    sell_email: 0,
+    sell_rcs: 0,
+    sell_instagram: 0,
+    sell_messenger: 0,
   })
   const [notifSaving, setNotifSaving] = useState(false)
   const [notifSaved, setNotifSaved] = useState(false)
@@ -705,11 +715,16 @@ export default function SettingsPage() {
 
         <div className="border-t border-gray-100 mt-4 pt-4">
           <h3 className="text-xs font-semibold text-gray-700 mb-3">Message Pricing (per message, INR)</h3>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             {[
               { label: 'WhatsApp', costKey: 'cost_whatsapp' as const, sellKey: 'sell_whatsapp' as const },
               { label: 'SMS', costKey: 'cost_sms' as const, sellKey: 'sell_sms' as const },
               { label: 'TalkEx', costKey: 'cost_talkex' as const, sellKey: 'sell_talkex' as const },
+              { label: 'Telegram', costKey: 'cost_telegram' as const, sellKey: 'sell_telegram' as const },
+              { label: 'Email', costKey: 'cost_email' as const, sellKey: 'sell_email' as const },
+              { label: 'RCS', costKey: 'cost_rcs' as const, sellKey: 'sell_rcs' as const },
+              { label: 'Instagram', costKey: 'cost_instagram' as const, sellKey: 'sell_instagram' as const },
+              { label: 'Messenger', costKey: 'cost_messenger' as const, sellKey: 'sell_messenger' as const },
             ].map(ch => (
               <div key={ch.costKey} className="space-y-2">
                 <p className="text-xs font-medium text-gray-700">{ch.label}</p>

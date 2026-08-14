@@ -6,6 +6,8 @@ import {
   Mail,
   Smartphone,
   MessageSquare,
+  Instagram,
+  Facebook,
   Check,
   X,
   ChevronRight,
@@ -28,6 +30,8 @@ const ICONS: Record<string, React.ComponentType<{ size?: number; className?: str
   mail: Mail,
   smartphone: Smartphone,
   'message-square': MessageSquare,
+  instagram: Instagram,
+  facebook: Facebook,
 }
 
 const ACCENTS: Record<string, string> = {
@@ -37,6 +41,8 @@ const ACCENTS: Record<string, string> = {
   email: 'bg-amber-50 text-amber-600',
   sms: 'bg-purple-50 text-purple-600',
   rcs: 'bg-pink-50 text-pink-600',
+  instagram: 'bg-fuchsia-50 text-fuchsia-600',
+  messenger: 'bg-indigo-50 text-indigo-600',
 }
 
 export default function Channels() {

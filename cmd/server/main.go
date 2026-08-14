@@ -30,7 +30,12 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/messaging"
 
 	// Channel connectors — imported for side-effect init() registration
+	_ "github.com/coreaxissoftware/talkex_business/internal/channels/email"
+	_ "github.com/coreaxissoftware/talkex_business/internal/channels/instagram"
+	_ "github.com/coreaxissoftware/talkex_business/internal/channels/messenger"
+	_ "github.com/coreaxissoftware/talkex_business/internal/channels/rcs"
 	_ "github.com/coreaxissoftware/talkex_business/internal/channels/sandbox"
+	_ "github.com/coreaxissoftware/talkex_business/internal/channels/telegram"
 	_ "github.com/coreaxissoftware/talkex_business/internal/channels/talkex"
 	waOnboarding "github.com/coreaxissoftware/talkex_business/internal/channels/whatsapp"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
@@ -359,6 +364,16 @@ func main() {
 			return prefs.CostSMS, prefs.SellSMS
 		case "talkex":
 			return prefs.CostTalkex, prefs.SellTalkex
+		case "telegram":
+			return prefs.CostTelegram, prefs.SellTelegram
+		case "email":
+			return prefs.CostEmail, prefs.SellEmail
+		case "rcs":
+			return prefs.CostRCS, prefs.SellRCS
+		case "instagram":
+			return prefs.CostInstagram, prefs.SellInstagram
+		case "messenger":
+			return prefs.CostMessenger, prefs.SellMessenger
 		default:
 			return 0, 0
 		}

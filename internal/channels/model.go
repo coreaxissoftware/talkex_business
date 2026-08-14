@@ -21,8 +21,10 @@ const (
 	KindWhatsApp Kind = "whatsapp"
 	KindTelegram Kind = "telegram"
 	KindEmail    Kind = "email"
-	KindSMS      Kind = "sms"
-	KindRCS      Kind = "rcs"
+	KindSMS       Kind = "sms"
+	KindRCS       Kind = "rcs"
+	KindInstagram Kind = "instagram"
+	KindMessenger Kind = "messenger"
 )
 
 // AllKinds — canonical order used by the dashboard grid. Sub-packages
@@ -35,6 +37,8 @@ var AllKinds = []Kind{
 	KindEmail,
 	KindSMS,
 	KindRCS,
+	KindInstagram,
+	KindMessenger,
 }
 
 // Config is the enable-state + provider-config row.

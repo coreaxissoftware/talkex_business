@@ -1,4 +1,4 @@
-export type ChannelKind = 'talkex' | 'whatsapp' | 'telegram' | 'email' | 'sms' | 'rcs'
+export type ChannelKind = 'talkex' | 'whatsapp' | 'telegram' | 'email' | 'sms' | 'rcs' | 'instagram' | 'messenger'
 
 export interface ChannelCatalogItem {
   kind: ChannelKind

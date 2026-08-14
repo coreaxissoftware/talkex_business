@@ -14,9 +14,19 @@ export interface UserPrefs {
   cost_whatsapp: number
   cost_sms: number
   cost_talkex: number
+  cost_telegram: number
+  cost_email: number
+  cost_rcs: number
+  cost_instagram: number
+  cost_messenger: number
   sell_whatsapp: number
   sell_sms: number
   sell_talkex: number
+  sell_telegram: number
+  sell_email: number
+  sell_rcs: number
+  sell_instagram: number
+  sell_messenger: number
 }
 
 export const settingsService = {
