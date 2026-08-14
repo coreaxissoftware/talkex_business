@@ -21,6 +21,7 @@ import {
   ThumbsDown,
   Copy,
   ListChecks,
+  Download,
 } from 'lucide-react'
 import { campaignsService } from '../services/campaigns'
 import { templatesService } from '../services/templates'
@@ -281,13 +282,24 @@ export default function Campaigns() {
             Bulk-send messages using an approved template to a chosen list of contacts.
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
-        >
-          <Plus size={16} />
-          New Campaign
-        </button>
+        <div className="flex items-center gap-2">
+          {campaigns.length > 0 && (
+            <button
+              onClick={() => campaignsService.exportCsv()}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <Download size={16} />
+              Export
+            </button>
+          )}
+          <button
+            onClick={openCreate}
+            className="flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 transition-colors"
+          >
+            <Plus size={16} />
+            New Campaign
+          </button>
+        </div>
       </div>
 
       {error && (

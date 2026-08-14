@@ -77,9 +77,10 @@ const navGroups = [
 interface SidebarProps {
   collapsed: boolean
   onToggle: () => void
+  onClose?: () => void
 }
 
-export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, onClose }: SidebarProps) {
   const { logout } = useAuthStore()
 
   return (
@@ -124,6 +125,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 key={item.to}
                 to={item.to}
                 end={item.to === '/'}
+                onClick={onClose}
                 className={({ isActive }) =>
                   `flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     isActive

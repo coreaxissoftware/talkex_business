@@ -1,6 +1,7 @@
 package campaigns
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,6 +15,7 @@ func RegisterRoutes(r *gin.Engine) {
 	g.Use(auth.AuthRequired())
 	{
 		g.GET("", handleList)
+		g.GET("/export", handleExport)
 		g.POST("", handleCreate)
 		g.GET("/:id", handleGet)
 		g.PATCH("/:id", handleUpdate)
@@ -33,6 +35,27 @@ func handleList(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, items)
+}
+
+func handleExport(c *gin.Context) {
+	items, err := List(database.DB, auth.GetUserID(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.Header("Content-Type", "text/csv")
+	c.Header("Content-Disposition", "attachment; filename=campaigns.csv")
+
+	csv := "Name,Channel,Status,Total,Sent,Delivered,Read,Failed,Total Cost,Created At\n"
+	for _, camp := range items {
+		csv += fmt.Sprintf("%q,%s,%s,%d,%d,%d,%d,%d,%.2f,%s\n",
+			camp.Name, camp.Channel, camp.Status,
+			camp.TotalCount, camp.SentCount, camp.DeliveredCount,
+			camp.ReadCount, camp.FailedCount, camp.TotalCost,
+			camp.CreatedAt.Format("2006-01-02 15:04:05"),
+		)
+	}
+	c.String(http.StatusOK, csv)
 }
 
 func handleCreate(c *gin.Context) {
