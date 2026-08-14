@@ -10,6 +10,13 @@ export interface UserPrefs {
   auto_pause_enabled: boolean
   min_balance: number
   sandbox_mode: boolean
+  approval_threshold: number
+  cost_whatsapp: number
+  cost_sms: number
+  cost_talkex: number
+  sell_whatsapp: number
+  sell_sms: number
+  sell_talkex: number
 }
 
 export const settingsService = {

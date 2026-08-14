@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/messaging"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -18,6 +19,7 @@ func RegisterRoutes(r *gin.Engine) {
 		g.GET("/summary", handleSummary)
 		g.GET("/timeseries", handleTimeseries)
 		g.GET("/export-csv", handleExportCSV)
+		g.GET("/costs", handleCosts)
 	}
 }
 
@@ -46,6 +48,11 @@ func handleExportCSV(c *gin.Context) {
 	for _, p := range series {
 		c.Writer.WriteString(fmt.Sprintf("%s,%d,%d\n", p.Date, p.Outbound, p.Inbound))
 	}
+}
+
+func handleCosts(c *gin.Context) {
+	summary := messaging.GetCostSummary(database.DB, auth.GetUserID(c))
+	c.JSON(http.StatusOK, summary)
 }
 
 func handleTimeseries(c *gin.Context) {

@@ -21,6 +21,7 @@ import {
   HelpCircle,
   Settings,
   UsersRound,
+  ShieldCheck,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -64,6 +65,7 @@ const navGroups = [
       { to: '/support', icon: HelpCircle, label: 'Support' },
       { to: '/team', icon: UsersRound, label: 'Team' },
       { to: '/settings', icon: Settings, label: 'Settings' },
+      { to: '/compliance', icon: ShieldCheck, label: 'Compliance' },
     ],
   },
 ]

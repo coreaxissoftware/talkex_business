@@ -27,6 +27,16 @@ export const campaignsService = {
     return res.data
   },
 
+  async approve(id: string): Promise<Campaign> {
+    const res = await api.post(`/campaigns/${id}/approve`)
+    return res.data
+  },
+
+  async reject(id: string, reason: string): Promise<Campaign> {
+    const res = await api.post(`/campaigns/${id}/reject`, { reason })
+    return res.data
+  },
+
   async remove(id: string): Promise<void> {
     await api.delete(`/campaigns/${id}`)
   },

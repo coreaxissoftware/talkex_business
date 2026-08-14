@@ -10,8 +10,9 @@ import {
   Radio,
   TrendingUp,
   Download,
+  DollarSign,
 } from 'lucide-react'
-import { analyticsService } from '../services/analytics'
+import { analyticsService, type CostSummary } from '../services/analytics'
 import { qualityService, type QualityStats, type QualityEvent } from '../services/quality'
 import type { AnalyticsSummary, TimeseriesPoint } from '../types/analytics'
 
@@ -224,6 +225,7 @@ export default function Analytics() {
   const [error, setError] = useState('')
   const [qualityStats, setQualityStats] = useState<QualityStats | null>(null)
   const [qualityEvents, setQualityEvents] = useState<QualityEvent[]>([])
+  const [costSummary, setCostSummary] = useState<CostSummary | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -234,9 +236,10 @@ export default function Analytics() {
       ])
       setSummary(s)
       setSeries(ts)
-      const [qs, qe] = await Promise.allSettled([qualityService.stats(), qualityService.events()])
+      const [qs, qe, cs] = await Promise.allSettled([qualityService.stats(), qualityService.events(), analyticsService.costs()])
       if (qs.status === 'fulfilled') setQualityStats(qs.value)
       if (qe.status === 'fulfilled') setQualityEvents(qe.value)
+      if (cs.status === 'fulfilled') setCostSummary(cs.value)
       setError('')
     } catch {
       setError('Could not load analytics.')
@@ -409,6 +412,69 @@ export default function Analytics() {
               )}
             </div>
           </div>
+
+          {/* Cost vs Margin */}
+          {costSummary && (costSummary.total_cost > 0 || costSummary.total_revenue > 0) && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <DollarSign size={16} className="text-primary-600" />
+                Cost vs Margin
+              </h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="rounded-lg border p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Total Cost</p>
+                  <p className="text-xl font-bold text-red-600">₹{costSummary.total_cost.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg border p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Total Revenue</p>
+                  <p className="text-xl font-bold text-green-600">₹{costSummary.total_revenue.toFixed(2)}</p>
+                </div>
+                <div className="rounded-lg border p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Net Margin</p>
+                  <p className={`text-xl font-bold ${costSummary.total_margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    ₹{costSummary.total_margin.toFixed(2)}
+                  </p>
+                </div>
+                <div className="rounded-lg border p-3 text-center">
+                  <p className="text-xs text-gray-500 mb-1">Margin %</p>
+                  <p className={`text-xl font-bold ${costSummary.margin_percent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {costSummary.margin_percent.toFixed(1)}%
+                  </p>
+                </div>
+              </div>
+              {costSummary.by_channel && costSummary.by_channel.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2">Per-Channel Breakdown</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b text-left text-gray-500 uppercase tracking-wider">
+                          <th className="pb-2">Channel</th>
+                          <th className="pb-2 text-right">Messages</th>
+                          <th className="pb-2 text-right">Cost (₹)</th>
+                          <th className="pb-2 text-right">Revenue (₹)</th>
+                          <th className="pb-2 text-right">Margin (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {costSummary.by_channel.map(ch => (
+                          <tr key={ch.channel}>
+                            <td className="py-2 font-medium text-gray-900 capitalize">{ch.channel}</td>
+                            <td className="py-2 text-right text-gray-700">{ch.messages.toLocaleString()}</td>
+                            <td className="py-2 text-right text-red-600">{ch.cost.toFixed(2)}</td>
+                            <td className="py-2 text-right text-green-600">{ch.revenue.toFixed(2)}</td>
+                            <td className={`py-2 text-right font-semibold ${ch.margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {ch.margin.toFixed(2)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Quality Rating */}
           {qualityStats && (

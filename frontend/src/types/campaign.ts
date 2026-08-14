@@ -6,6 +6,8 @@ export type CampaignStatus =
   | 'failed'
   | 'cancelled'
   | 'paused'
+  | 'pending_approval'
+  | 'rejected'
 
 export interface Campaign {
   id: string
@@ -23,6 +25,13 @@ export interface Campaign {
   delivered_count: number
   read_count: number
   failed_count: number
+  total_cost: number
+  approval_required: boolean
+  approved_by: string | null
+  approved_at: string | null
+  rejected_by: string | null
+  rejected_at: string | null
+  rejection_reason: string | null
   created_at: string
   updated_at: string
 }

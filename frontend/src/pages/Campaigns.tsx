@@ -15,6 +15,10 @@ import {
   X,
   BarChart3,
   Pause,
+  ShieldCheck,
+  Ban,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react'
 import { campaignsService } from '../services/campaigns'
 import { templatesService } from '../services/templates'
@@ -31,7 +35,9 @@ const STATUS_STYLE: Record<CampaignStatus, { bg: string; text: string; label: st
   completed: { bg: 'bg-green-50',    text: 'text-green-700',  label: 'Completed', Icon: CheckCircle2 },
   failed:    { bg: 'bg-red-50',      text: 'text-red-700',    label: 'Failed',    Icon: XCircle },
   cancelled: { bg: 'bg-gray-100',    text: 'text-gray-500',   label: 'Cancelled', Icon: Square },
-  paused:    { bg: 'bg-orange-50',   text: 'text-orange-700', label: 'Paused',    Icon: Pause },
+  paused:           { bg: 'bg-orange-50',   text: 'text-orange-700', label: 'Paused',           Icon: Pause },
+  pending_approval: { bg: 'bg-purple-50',   text: 'text-purple-700', label: 'Pending Approval', Icon: ShieldCheck },
+  rejected:         { bg: 'bg-red-50',      text: 'text-red-700',    label: 'Rejected',         Icon: Ban },
 }
 
 function StatusPill({ status }: { status: CampaignStatus }) {
@@ -95,6 +101,8 @@ export default function Campaigns() {
 
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [statsCampaign, setStatsCampaign] = useState<Campaign | null>(null)
+  const [rejectCampaignId, setRejectCampaignId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -209,6 +217,26 @@ export default function Campaigns() {
     }
   }
 
+  const handleApprove = async (c: Campaign) => {
+    try {
+      const updated = await campaignsService.approve(c.id)
+      setCampaigns((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Could not approve campaign')
+    }
+  }
+
+  const handleReject = async (id: string) => {
+    try {
+      const updated = await campaignsService.reject(id, rejectReason)
+      setCampaigns((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+      setRejectCampaignId(null)
+      setRejectReason('')
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Could not reject campaign')
+    }
+  }
+
   const canLaunch = (s: CampaignStatus) => s === 'draft' || s === 'scheduled'
   const canCancel = (s: CampaignStatus) => s === 'draft' || s === 'scheduled' || s === 'running'
 
@@ -308,6 +336,24 @@ export default function Campaigns() {
                               >
                                 <BarChart3 size={14} />
                               </button>
+                              {c.status === 'pending_approval' && (
+                                <>
+                                  <button
+                                    onClick={() => handleApprove(c)}
+                                    className="rounded-lg p-1.5 text-green-600 hover:bg-green-50 transition-colors"
+                                    title="Approve"
+                                  >
+                                    <ThumbsUp size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => setRejectCampaignId(c.id)}
+                                    className="rounded-lg p-1.5 text-red-600 hover:bg-red-50 transition-colors"
+                                    title="Reject"
+                                  >
+                                    <ThumbsDown size={14} />
+                                  </button>
+                                </>
+                              )}
                               {canLaunch(c.status) && (
                                 <button
                                   onClick={() => handleLaunch(c)}
@@ -480,6 +526,41 @@ export default function Campaigns() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Reject reason modal */}
+      <Modal open={!!rejectCampaignId} onClose={() => { setRejectCampaignId(null); setRejectReason('') }} title="Reject Campaign">
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Provide a reason for rejecting this campaign. The creator will see this reason.
+          </p>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Reason</label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+              placeholder="e.g. Exceeds daily sending limits, unapproved content..."
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => { setRejectCampaignId(null); setRejectReason('') }}
+              className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => rejectCampaignId && handleReject(rejectCampaignId)}
+              className="flex-1 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+            >
+              Reject Campaign
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Stats modal */}

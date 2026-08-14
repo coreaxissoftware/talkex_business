@@ -16,13 +16,15 @@ import (
 //                              ↘ failed
 //                              ↘ cancelled
 const (
-	StatusDraft     = "draft"
-	StatusScheduled = "scheduled"
-	StatusRunning   = "running"
-	StatusCompleted = "completed"
-	StatusFailed    = "failed"
-	StatusCancelled = "cancelled"
-	StatusPaused    = "paused"
+	StatusDraft            = "draft"
+	StatusScheduled        = "scheduled"
+	StatusRunning          = "running"
+	StatusCompleted        = "completed"
+	StatusFailed           = "failed"
+	StatusCancelled        = "cancelled"
+	StatusPaused           = "paused"
+	StatusPendingApproval  = "pending_approval"
+	StatusRejected         = "rejected"
 )
 
 type Campaign struct {
@@ -47,4 +49,15 @@ type Campaign struct {
 	DeliveredCount int `gorm:"default:0" json:"delivered_count"`
 	ReadCount      int `gorm:"default:0" json:"read_count"`
 	FailedCount    int `gorm:"default:0" json:"failed_count"`
+
+	// Cost tracking
+	TotalCost float64 `gorm:"default:0" json:"total_cost"`
+
+	// Maker-checker approval fields
+	ApprovalRequired bool       `gorm:"default:false;not null" json:"approval_required"`
+	ApprovedBy       *string    `gorm:"type:varchar(36)" json:"approved_by"`
+	ApprovedAt       *time.Time `json:"approved_at"`
+	RejectedBy       *string    `gorm:"type:varchar(36)" json:"rejected_by"`
+	RejectedAt       *time.Time `json:"rejected_at"`
+	RejectionReason  *string    `gorm:"type:varchar(500)" json:"rejection_reason"`
 }

@@ -26,29 +26,40 @@ type FallbackResolver func(ownerID, contactID string) (fallbackChannel string, o
 // SandboxChecker returns true if the owner has sandbox mode enabled.
 type SandboxChecker func(ownerID string) bool
 
+// CostResolver returns (costPerMessage, sellPrice) for a given owner+channel.
+type CostResolver func(ownerID, channel string) (cost float64, sell float64)
+
 var (
 	fallbackResolver FallbackResolver
 	sandboxChecker   SandboxChecker
+	costResolver     CostResolver
 )
 
 func RegisterFallbackResolver(f FallbackResolver) { fallbackResolver = f }
 func RegisterSandboxChecker(f SandboxChecker)      { sandboxChecker = f }
+func RegisterCostResolver(f CostResolver)          { costResolver = f }
 
 func Enqueue(db *gorm.DB, in *EnqueueInput) (*QueuedMessage, error) {
 	if in.Priority == 0 {
 		in.Priority = PriorityMarketing
 	}
+	var cost, sell float64
+	if costResolver != nil {
+		cost, sell = costResolver(in.OwnerID, in.Channel)
+	}
 	msg := &QueuedMessage{
-		OwnerID:    in.OwnerID,
-		CampaignID: in.CampaignID,
-		ContactID:  in.ContactID,
-		Channel:    in.Channel,
-		Body:       in.Body,
-		TemplateID: in.TemplateID,
-		MediaURL:   in.MediaURL,
-		Status:     shared.StatusQueued,
-		Priority:   in.Priority,
-		MaxRetries: 3,
+		OwnerID:        in.OwnerID,
+		CampaignID:     in.CampaignID,
+		ContactID:      in.ContactID,
+		Channel:        in.Channel,
+		Body:           in.Body,
+		TemplateID:     in.TemplateID,
+		MediaURL:       in.MediaURL,
+		Status:         shared.StatusQueued,
+		Priority:       in.Priority,
+		MaxRetries:     3,
+		CostPerMessage: cost,
+		SellPrice:      sell,
 	}
 	if err := db.Create(msg).Error; err != nil {
 		return nil, err
@@ -186,6 +197,72 @@ func GetQueueStats(db *gorm.DB, ownerID string) map[string]int64 {
 		stats[status] = cnt
 	}
 	return stats
+}
+
+// CostSummary aggregates cost and revenue for an owner.
+type CostSummary struct {
+	TotalCost     float64            `json:"total_cost"`
+	TotalRevenue  float64            `json:"total_revenue"`
+	TotalMargin   float64            `json:"total_margin"`
+	MarginPercent float64            `json:"margin_percent"`
+	ByChannel     []ChannelCostBreak `json:"by_channel"`
+}
+
+type ChannelCostBreak struct {
+	Channel  string  `json:"channel"`
+	Messages int64   `json:"messages"`
+	Cost     float64 `json:"cost"`
+	Revenue  float64 `json:"revenue"`
+	Margin   float64 `json:"margin"`
+}
+
+// GetCostSummary computes cost vs revenue for all sent messages.
+func GetCostSummary(db *gorm.DB, ownerID string) *CostSummary {
+	type row struct {
+		Channel  string
+		Messages int64
+		Cost     float64
+		Revenue  float64
+	}
+	var rows []row
+	db.Model(&QueuedMessage{}).
+		Select("channel, COUNT(*) as messages, COALESCE(SUM(cost_per_message),0) as cost, COALESCE(SUM(sell_price),0) as revenue").
+		Where("owner_id = ? AND status IN ?", ownerID, []string{string(shared.StatusSent), string(shared.StatusDelivered)}).
+		Group("channel").
+		Scan(&rows)
+
+	s := &CostSummary{}
+	for _, r := range rows {
+		margin := r.Revenue - r.Cost
+		s.TotalCost += r.Cost
+		s.TotalRevenue += r.Revenue
+		s.ByChannel = append(s.ByChannel, ChannelCostBreak{
+			Channel:  r.Channel,
+			Messages: r.Messages,
+			Cost:     r.Cost,
+			Revenue:  r.Revenue,
+			Margin:   margin,
+		})
+	}
+	s.TotalMargin = s.TotalRevenue - s.TotalCost
+	if s.TotalRevenue > 0 {
+		s.MarginPercent = (s.TotalMargin / s.TotalRevenue) * 100
+	}
+	return s
+}
+
+// GetCampaignCost returns total cost and revenue for a specific campaign.
+func GetCampaignCost(db *gorm.DB, campaignID string) (cost float64, revenue float64) {
+	type result struct {
+		Cost    float64
+		Revenue float64
+	}
+	var r result
+	db.Model(&QueuedMessage{}).
+		Select("COALESCE(SUM(cost_per_message),0) as cost, COALESCE(SUM(sell_price),0) as revenue").
+		Where("campaign_id = ?", campaignID).
+		Scan(&r)
+	return r.Cost, r.Revenue
 }
 
 // GetCampaignDeliveryStats returns delivery stats for a specific campaign.

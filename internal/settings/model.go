@@ -18,7 +18,17 @@ type PrefsData struct {
 	EmailDigest      bool    `json:"email_digest"`
 	Timezone         string  `json:"timezone"`
 	Language         string  `json:"language"`
-	AutoPauseEnabled bool    `json:"auto_pause_enabled"`
-	MinBalance       float64 `json:"min_balance"`
-	SandboxMode      bool    `json:"sandbox_mode"`
+	AutoPauseEnabled  bool    `json:"auto_pause_enabled"`
+	MinBalance        float64 `json:"min_balance"`
+	SandboxMode       bool    `json:"sandbox_mode"`
+	ApprovalThreshold int     `json:"approval_threshold"`
+
+	// Per-channel cost configuration (cost to business per message)
+	CostWhatsapp  float64 `json:"cost_whatsapp"`
+	CostSMS       float64 `json:"cost_sms"`
+	CostTalkex    float64 `json:"cost_talkex"`
+	// Sell price per message (what you charge the client)
+	SellWhatsapp  float64 `json:"sell_whatsapp"`
+	SellSMS       float64 `json:"sell_sms"`
+	SellTalkex    float64 `json:"sell_talkex"`
 }

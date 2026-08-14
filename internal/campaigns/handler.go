@@ -18,6 +18,8 @@ func RegisterRoutes(r *gin.Engine) {
 		g.GET("/:id", handleGet)
 		g.POST("/:id/launch", handleLaunch)
 		g.POST("/:id/cancel", handleCancel)
+		g.POST("/:id/approve", handleApprove)
+		g.POST("/:id/reject", handleReject)
 		g.DELETE("/:id", handleDelete)
 	}
 }
@@ -96,6 +98,44 @@ func handleCancel(c *gin.Context) {
 	updated, err := Cancel(database.DB, camp)
 	if err == ErrInvalidStatus {
 		c.JSON(http.StatusConflict, gin.H{"detail": err.Error()})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+func handleApprove(c *gin.Context) {
+	camp := getOwnedOrAbort(c)
+	if camp == nil {
+		return
+	}
+	updated, err := Approve(database.DB, camp, auth.GetUserID(c))
+	if err == ErrInvalidStatus {
+		c.JSON(http.StatusConflict, gin.H{"detail": "Campaign is not pending approval"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
+}
+
+func handleReject(c *gin.Context) {
+	camp := getOwnedOrAbort(c)
+	if camp == nil {
+		return
+	}
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	c.ShouldBindJSON(&req)
+	updated, err := Reject(database.DB, camp, auth.GetUserID(c), req.Reason)
+	if err == ErrInvalidStatus {
+		c.JSON(http.StatusConflict, gin.H{"detail": "Campaign is not pending approval"})
 		return
 	}
 	if err != nil {

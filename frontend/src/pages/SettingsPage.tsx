@@ -94,6 +94,13 @@ export default function SettingsPage() {
     auto_pause_enabled: false,
     min_balance: 0,
     sandbox_mode: false,
+    approval_threshold: 0,
+    cost_whatsapp: 0,
+    cost_sms: 0,
+    cost_talkex: 0,
+    sell_whatsapp: 0,
+    sell_sms: 0,
+    sell_talkex: 0,
   })
   const [notifSaving, setNotifSaving] = useState(false)
   const [notifSaved, setNotifSaved] = useState(false)
@@ -678,6 +685,60 @@ export default function SettingsPage() {
               <p className="text-[11px] text-gray-400 mt-1">Campaigns auto-resume when balance is recharged above this amount.</p>
             </div>
           )}
+        </div>
+        <div className="border-t border-gray-100 mt-4 pt-4">
+          <h3 className="text-xs font-semibold text-gray-700 mb-3">Campaign Approval</h3>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">Approval Threshold (recipients)</label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={notifPrefs.approval_threshold}
+              onChange={e => setNotifPrefs(prev => ({ ...prev, approval_threshold: parseInt(e.target.value) || 0 }))}
+              className="w-40 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+              placeholder="e.g. 1000"
+            />
+            <p className="text-[11px] text-gray-400 mt-1">Campaigns with recipients above this number require approval before launch. Set to 0 to disable.</p>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 mt-4 pt-4">
+          <h3 className="text-xs font-semibold text-gray-700 mb-3">Message Pricing (per message, INR)</h3>
+          <div className="grid grid-cols-3 gap-4">
+            {[
+              { label: 'WhatsApp', costKey: 'cost_whatsapp' as const, sellKey: 'sell_whatsapp' as const },
+              { label: 'SMS', costKey: 'cost_sms' as const, sellKey: 'sell_sms' as const },
+              { label: 'TalkEx', costKey: 'cost_talkex' as const, sellKey: 'sell_talkex' as const },
+            ].map(ch => (
+              <div key={ch.costKey} className="space-y-2">
+                <p className="text-xs font-medium text-gray-700">{ch.label}</p>
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">Cost (your cost)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={notifPrefs[ch.costKey]}
+                    onChange={e => setNotifPrefs(prev => ({ ...prev, [ch.costKey]: parseFloat(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-gray-500 mb-0.5">Sell (charge client)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={notifPrefs[ch.sellKey]}
+                    onChange={e => setNotifPrefs(prev => ({ ...prev, [ch.sellKey]: parseFloat(e.target.value) || 0 }))}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2">Set per-message cost and sell price for margin tracking. Leave at 0 to disable.</p>
         </div>
 
         <button

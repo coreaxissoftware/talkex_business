@@ -26,6 +26,7 @@ import ContactLists from './pages/ContactLists'
 import MediaLibrary from './pages/MediaLibrary'
 import Team from './pages/Team'
 import Tags from './pages/Tags'
+import Compliance from './pages/Compliance'
 
 const router = createBrowserRouter([
   {
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
           { path: '/settings', element: <SettingsPage /> },
           { path: '/team', element: <Team /> },
           { path: '/tags', element: <Tags /> },
+          { path: '/compliance', element: <Compliance /> },
         ],
       },
     ],

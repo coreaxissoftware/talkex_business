@@ -17,6 +17,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/billing"
 	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
 	"github.com/coreaxissoftware/talkex_business/internal/channels"
+	"github.com/coreaxissoftware/talkex_business/internal/compliance"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/contactlists"
 	"github.com/coreaxissoftware/talkex_business/internal/customers"
@@ -34,6 +35,7 @@ import (
 	waOnboarding "github.com/coreaxissoftware/talkex_business/internal/channels/whatsapp"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/notifications"
+	"github.com/coreaxissoftware/talkex_business/internal/organizations"
 	"github.com/coreaxissoftware/talkex_business/internal/quality"
 	"github.com/coreaxissoftware/talkex_business/internal/settings"
 	"github.com/coreaxissoftware/talkex_business/internal/support"
@@ -85,6 +87,11 @@ func main() {
 		&settings.UserSettings{},
 		&auth.Session{},
 		&waOnboarding.Onboarding{},
+		&organizations.Organization{},
+		&organizations.OrgMember{},
+		&compliance.ConsentRecord{},
+		&compliance.DSARRequest{},
+		&compliance.ProcessingRecord{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -134,7 +141,9 @@ func main() {
 	quality.RegisterRoutes(r)
 	settings.RegisterRoutes(r)
 	tags.RegisterRoutes(r)
+	organizations.RegisterRoutes(r)
 	waOnboarding.RegisterRoutes(r)
+	compliance.RegisterRoutes(r)
 
 	// Register API-key resolver with the auth package — lets any endpoint
 	// guarded by auth.AuthRequired accept a plaintext API key in place of
@@ -335,6 +344,33 @@ func main() {
 				Link:    "/analytics",
 			})
 		}
+	})
+
+	// Wire per-channel cost/sell price resolver for messaging engine
+	messaging.RegisterCostResolver(func(ownerID, channel string) (float64, float64) {
+		_, prefs, err := settings.Get(database.DB, ownerID)
+		if err != nil {
+			return 0, 0
+		}
+		switch channel {
+		case "whatsapp":
+			return prefs.CostWhatsapp, prefs.SellWhatsapp
+		case "sms":
+			return prefs.CostSMS, prefs.SellSMS
+		case "talkex":
+			return prefs.CostTalkex, prefs.SellTalkex
+		default:
+			return 0, 0
+		}
+	})
+
+	// Wire maker-checker approval threshold
+	campaigns.RegisterApprovalChecker(func(ownerID string) int {
+		_, prefs, err := settings.Get(database.DB, ownerID)
+		if err != nil {
+			return 0
+		}
+		return prefs.ApprovalThreshold
 	})
 
 	// Background campaign scheduler — auto-launches campaigns when scheduled_at arrives

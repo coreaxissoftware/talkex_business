@@ -26,6 +26,8 @@ type QueuedMessage struct {
 	Priority        int                  `gorm:"default:10;not null;index" json:"priority"`
 	FallbackTried   bool                 `gorm:"default:false;not null" json:"fallback_tried"`
 	OriginalChannel *string              `gorm:"type:varchar(50)" json:"original_channel"`
+	CostPerMessage  float64              `gorm:"default:0" json:"cost_per_message"`
+	SellPrice       float64              `gorm:"default:0" json:"sell_price"`
 }
 
 const (

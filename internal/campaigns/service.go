@@ -75,15 +75,26 @@ func Create(db *gorm.DB, ownerID string, in *CreateInput) (*Campaign, error) {
 		status = StatusScheduled
 	}
 
+	// Check if this campaign needs approval based on recipient count
+	needsApproval := false
+	if approvalChecker != nil {
+		threshold := approvalChecker(ownerID)
+		if threshold > 0 && len(ownedIDs) >= threshold {
+			needsApproval = true
+			status = StatusPendingApproval
+		}
+	}
+
 	c := &Campaign{
-		OwnerID:     ownerID,
-		Name:        in.Name,
-		TemplateID:  in.TemplateID,
-		Channel:     tpl.Channel,
-		Status:      status,
-		ScheduledAt: in.ScheduledAt,
-		ContactIDs:  datatypes.JSON(ids),
-		TotalCount:  len(ownedIDs),
+		OwnerID:          ownerID,
+		Name:             in.Name,
+		TemplateID:       in.TemplateID,
+		Channel:          tpl.Channel,
+		Status:           status,
+		ScheduledAt:      in.ScheduledAt,
+		ContactIDs:       datatypes.JSON(ids),
+		TotalCount:       len(ownedIDs),
+		ApprovalRequired: needsApproval,
 	}
 	if err := db.Create(c).Error; err != nil {
 		return nil, err
@@ -104,15 +115,20 @@ type CompletionHook func(ownerID string, c *Campaign)
 // direct import cycle.
 type EnqueueFunc func(ownerID, campaignID, contactID, channel, body string, templateID *string) error
 
+// ApprovalChecker returns the approval threshold for an owner (0 = no approval needed).
+type ApprovalChecker func(ownerID string) int
+
 var (
-	sender          SendFunc
-	enqueuer        EnqueueFunc
-	onComplete      CompletionHook
+	sender           SendFunc
+	enqueuer         EnqueueFunc
+	onComplete       CompletionHook
+	approvalChecker  ApprovalChecker
 )
 
-func RegisterSender(f SendFunc)              { sender = f }
-func RegisterEnqueuer(f EnqueueFunc)         { enqueuer = f }
-func RegisterCompletionHook(h CompletionHook) { onComplete = h }
+func RegisterSender(f SendFunc)                { sender = f }
+func RegisterEnqueuer(f EnqueueFunc)           { enqueuer = f }
+func RegisterCompletionHook(h CompletionHook)  { onComplete = h }
+func RegisterApprovalChecker(f ApprovalChecker) { approvalChecker = f }
 
 // Launch flips the state to running and, if a sender is registered,
 // fans out the per-recipient sends in a background goroutine so the HTTP
@@ -224,6 +240,40 @@ func markCompleted(db *gorm.DB, c *Campaign, status string) {
 		"status":       status,
 		"completed_at": now,
 	}).Error
+}
+
+// Approve moves a pending_approval campaign to draft (or scheduled if scheduled_at set).
+func Approve(db *gorm.DB, c *Campaign, approverID string) (*Campaign, error) {
+	if c.Status != StatusPendingApproval {
+		return nil, ErrInvalidStatus
+	}
+	now := time.Now()
+	c.ApprovedBy = &approverID
+	c.ApprovedAt = &now
+	c.Status = StatusDraft
+	if c.ScheduledAt != nil && c.ScheduledAt.After(now) {
+		c.Status = StatusScheduled
+	}
+	if err := db.Save(c).Error; err != nil {
+		return nil, err
+	}
+	return c, nil
+}
+
+// Reject moves a pending_approval campaign to rejected with a reason.
+func Reject(db *gorm.DB, c *Campaign, rejectorID string, reason string) (*Campaign, error) {
+	if c.Status != StatusPendingApproval {
+		return nil, ErrInvalidStatus
+	}
+	now := time.Now()
+	c.RejectedBy = &rejectorID
+	c.RejectedAt = &now
+	c.RejectionReason = &reason
+	c.Status = StatusRejected
+	if err := db.Save(c).Error; err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // Cancel moves a non-terminal campaign into cancelled state.
