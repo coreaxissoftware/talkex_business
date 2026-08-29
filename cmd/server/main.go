@@ -30,6 +30,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/conversations"
 	"github.com/coreaxissoftware/talkex_business/internal/developers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/events"
 	"github.com/coreaxissoftware/talkex_business/internal/flows"
 	"github.com/coreaxissoftware/talkex_business/internal/media"
 	"github.com/coreaxissoftware/talkex_business/internal/messaging"
@@ -168,6 +169,7 @@ func main() {
 	payments.RegisterRoutes(r)
 	flows.RegisterRoutes(r)
 	ai.RegisterRoutes(r)
+	events.RegisterRoutes(r)
 	channels.RegisterWebhookRoutes(r)
 
 	// Wire payments → wallet credit. Uses paymentID as idempotency key
@@ -247,6 +249,11 @@ func main() {
 	// send path, so this fires with the initial status; real delivery
 	// receipts will call the same conversations hook once wired.
 	conversations.RegisterOutboundHook(func(ownerID string, msg *conversations.Message, conv *conversations.Conversation) {
+		// (SSE) update any client that has this thread open on another device
+		events.Publish(ownerID, events.TypeMessageOutbound, map[string]interface{}{
+			"message":      msg,
+			"conversation": conv,
+		})
 		webhooks.Deliver(database.DB, ownerID, webhooks.EventMessageStatus, map[string]interface{}{
 			"message":      msg,
 			"conversation": conv,
@@ -257,6 +264,12 @@ func main() {
 	// (b) drop an in-app notification, and (c) deliver the event to any
 	// subscribed outbound webhooks. Each is best-effort.
 	conversations.RegisterInboundHook(func(ownerID string, msg *conversations.Message, conv *conversations.Conversation) {
+		// (SSE) live update to the inbox / open thread
+		events.Publish(ownerID, events.TypeMessageInbound, map[string]interface{}{
+			"message":      msg,
+			"conversation": conv,
+		})
+
 		// (0) Flow engine — first advance any active RunState for this
 		// contact (branch steps waiting on a reply), then try to start a
 		// new flow if a keyword-triggered flow matches the body.
@@ -502,6 +515,11 @@ func main() {
 		tags = append(tags, tag)
 		_, err = contacts.Update(database.DB, ct, &contacts.UpdateInput{Tags: &tags})
 		return err
+	})
+
+	// SSE fan-out for notifications — live bell without polling
+	notifications.RegisterEmitHook(func(ownerID string, n *notifications.Notification) {
+		events.Publish(ownerID, events.TypeNotificationNew, n)
 	})
 
 	// Background flow sweeper — advances waiting steps every 30s

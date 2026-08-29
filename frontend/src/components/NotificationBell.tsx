@@ -3,6 +3,7 @@ import { Bell, CheckCheck, Info, CheckCircle2, AlertCircle, AlertTriangle } from
 import { Link } from 'react-router'
 import { notificationsService } from '../services/notifications'
 import type { Notification, NotificationType } from '../types/notification'
+import { eventStream } from '../services/events'
 
 const TYPE_ICON: Record<NotificationType, React.ComponentType<{ size?: number; className?: string }>> = {
   info: Info,
@@ -59,10 +60,20 @@ export default function NotificationBell() {
 
   useEffect(() => {
     refreshCount()
-    // Poll every 30s so the badge stays roughly fresh without WebSockets.
+    // Poll every 30s as a safety net; the SSE hook below is the
+    // primary refresh path and updates immediately.
     const t = setInterval(refreshCount, 30_000)
     return () => clearInterval(t)
   }, [refreshCount])
+
+  // Live push via SSE — bump the badge and prepend the new item.
+  useEffect(() => {
+    const off = eventStream.on('notification.new', (n: Notification) => {
+      setUnread((c) => c + 1)
+      setItems((prev) => [n, ...prev].slice(0, 50))
+    })
+    return () => { off() }
+  }, [])
 
   useEffect(() => {
     if (open) loadList()

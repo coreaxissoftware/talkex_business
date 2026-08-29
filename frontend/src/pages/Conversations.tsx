@@ -18,6 +18,7 @@ import {
 import CannedPicker from '../components/CannedPicker'
 import AiPanel from '../components/AiPanel'
 import { csatService } from '../services/csat'
+import { eventStream } from '../services/events'
 import { conversationsService } from '../services/conversations'
 import { contactsService } from '../services/contacts'
 import { teamService } from '../services/team'
@@ -132,6 +133,32 @@ export default function Conversations() {
   useEffect(() => {
     loadInbox()
   }, [loadInbox])
+
+  // Live updates via SSE — new inbound/outbound messages refresh the
+  // inbox row and, if the affected thread is currently open, append
+  // the new message without a full reload.
+  useEffect(() => {
+    const handleMsg = (payload: any) => {
+      const conv = payload?.conversation
+      const msg = payload?.message
+      if (!conv || !msg) return
+
+      // Refresh inbox row (or add if it's a brand-new conversation)
+      loadInbox()
+
+      // If the affected thread is open, append the message live
+      if (selected && selected.id === conv.id) {
+        setThread(prev =>
+          prev
+            ? { ...prev, conversation: conv, messages: [...prev.messages, msg] }
+            : prev,
+        )
+      }
+    }
+    const off1 = eventStream.on('message.inbound', handleMsg)
+    const off2 = eventStream.on('message.outbound', handleMsg)
+    return () => { off1(); off2() }
+  }, [selected, loadInbox])
 
   const openThread = useCallback(async (row: ConversationRow) => {
     setSelected(row)

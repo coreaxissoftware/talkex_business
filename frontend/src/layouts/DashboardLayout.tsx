@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router'
 import Sidebar from './Sidebar'
 import Header from './Header'
+import { eventStream } from '../services/events'
 
 export default function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
@@ -14,6 +15,12 @@ export default function DashboardLayout() {
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Open the SSE connection for the whole authenticated session.
+  useEffect(() => {
+    eventStream.connect()
+    return () => eventStream.disconnect()
   }, [])
 
   return (

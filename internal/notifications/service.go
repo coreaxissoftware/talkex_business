@@ -19,6 +19,15 @@ type EmitInput struct {
 	Link    string
 }
 
+// EmitHook fires after a notification is persisted — used by the SSE
+// hub in main.go to push a live update to the bell without polling.
+type EmitHook func(ownerID string, n *Notification)
+
+var emitHook EmitHook
+
+// RegisterEmitHook wires a post-persist callback. Nil-safe.
+func RegisterEmitHook(h EmitHook) { emitHook = h }
+
 // Emit writes one notification for the given owner. Fire-and-forget on
 // the caller's side — the caller shouldn't fail because logging a
 // notification failed, so we swallow errors here after logging.
@@ -33,7 +42,12 @@ func Emit(db *gorm.DB, in EmitInput) {
 		Body:    in.Body,
 		Link:    in.Link,
 	}
-	_ = db.Create(n).Error
+	if err := db.Create(n).Error; err != nil {
+		return
+	}
+	if emitHook != nil {
+		emitHook(in.OwnerID, n)
+	}
 }
 
 // ListOptions narrows the notifications query.
