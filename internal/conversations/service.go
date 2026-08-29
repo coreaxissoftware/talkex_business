@@ -3,6 +3,7 @@ package conversations
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -60,6 +61,89 @@ func List(db *gorm.DB, ownerID string) ([]ConversationWithContact, error) {
 		Order("COALESCE(conversations.last_message_at, conversations.created_at) DESC").
 		Scan(&out).Error
 	return out, err
+}
+
+// Search returns conversations for an owner whose contact name, phone,
+// labels, or any message body contains the query (case-insensitive).
+// Kept simple: SQL LIKE across the joined text; scales fine for the
+// dashboard-sized inbox and swaps for FTS/Elastic if a tenant grows.
+func Search(db *gorm.DB, ownerID, query string) ([]ConversationWithContact, error) {
+	q := strings.TrimSpace(query)
+	if q == "" {
+		return List(db, ownerID)
+	}
+	like := "%" + strings.ToLower(q) + "%"
+
+	// Find conversation IDs whose messages match the query, so a
+	// search for "invoice #42" finds a conversation even when the
+	// contact name is unrelated.
+	var msgConvIDs []string
+	db.Model(&Message{}).
+		Distinct("conversation_id").
+		Where("LOWER(body) LIKE ?", like).
+		Pluck("conversation_id", &msgConvIDs)
+
+	var out []ConversationWithContact
+	qb := db.
+		Table("conversations").
+		Select("conversations.*, contacts.name as contact_name, contacts.phone_number as contact_phone_number").
+		Joins("LEFT JOIN contacts ON contacts.id = conversations.contact_id").
+		Where("conversations.owner_id = ?", ownerID)
+
+	if len(msgConvIDs) > 0 {
+		qb = qb.Where(
+			"LOWER(COALESCE(contacts.name,'')) LIKE ? OR LOWER(contacts.phone_number) LIKE ? OR LOWER(conversations.labels) LIKE ? OR conversations.id IN ?",
+			like, like, like, msgConvIDs,
+		)
+	} else {
+		qb = qb.Where(
+			"LOWER(COALESCE(contacts.name,'')) LIKE ? OR LOWER(contacts.phone_number) LIKE ? OR LOWER(conversations.labels) LIKE ?",
+			like, like, like,
+		)
+	}
+	err := qb.Order("COALESCE(conversations.last_message_at, conversations.created_at) DESC").
+		Limit(100).Scan(&out).Error
+	return out, err
+}
+
+// BulkAssign assigns many conversations at once. Cross-tenant safe —
+// the WHERE clause pins to ownerID so a rogue caller can't retag
+// another tenant's threads.
+func BulkAssign(db *gorm.DB, ownerID string, ids []string, agentUserID, agentName string) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	res := db.Model(&Conversation{}).
+		Where("owner_id = ? AND id IN ?", ownerID, ids).
+		Updates(map[string]interface{}{
+			"assigned_to":   agentUserID,
+			"assigned_name": agentName,
+		})
+	return res.RowsAffected, res.Error
+}
+
+// BulkMarkRead zeros unread_count for many conversations.
+func BulkMarkRead(db *gorm.DB, ownerID string, ids []string) (int64, error) {
+	if len(ids) == 0 {
+		return 0, nil
+	}
+	res := db.Model(&Conversation{}).
+		Where("owner_id = ? AND id IN ?", ownerID, ids).
+		Update("unread_count", 0)
+	return res.RowsAffected, res.Error
+}
+
+// FindLatestByContact returns the most recent conversation for a
+// contact regardless of channel — used by the AutoAwayLog dedup so
+// we don't spam away messages every message.
+func FindLatestByContact(db *gorm.DB, ownerID, contactID string) (*Conversation, error) {
+	var c Conversation
+	err := db.Where("owner_id = ? AND contact_id = ?", ownerID, contactID).
+		Order("last_message_at DESC").First(&c).Error
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
 }
 
 func GetByID(db *gorm.DB, ownerID, id string) (*Conversation, error) {

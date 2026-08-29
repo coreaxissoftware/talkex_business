@@ -14,6 +14,9 @@ func RegisterRoutes(r *gin.Engine) {
 	g.Use(auth.AuthRequired())
 	{
 		g.GET("", handleList)
+		g.GET("/search", handleSearch)
+		g.POST("/bulk-assign", handleBulkAssign)
+		g.POST("/bulk-read", handleBulkMarkRead)
 		g.GET("/:id/messages", handleListMessages)
 		g.PATCH("/:id", handleUpdate)
 		g.POST("/:id/read", handleMarkRead)
@@ -108,6 +111,51 @@ func handleSend(c *gin.Context) {
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
 	}
+}
+
+func handleSearch(c *gin.Context) {
+	items, err := Search(database.DB, auth.GetUserID(c), c.Query("q"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, items)
+}
+
+type bulkAssignReq struct {
+	IDs         []string `json:"ids" binding:"required"`
+	AgentUserID string   `json:"agent_user_id"`
+	AgentName   string   `json:"agent_name"`
+}
+
+func handleBulkAssign(c *gin.Context) {
+	var req bulkAssignReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	affected, err := BulkAssign(database.DB, auth.GetUserID(c), req.IDs, req.AgentUserID, req.AgentName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"updated": affected})
+}
+
+func handleBulkMarkRead(c *gin.Context) {
+	var req struct {
+		IDs []string `json:"ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	affected, err := BulkMarkRead(database.DB, auth.GetUserID(c), req.IDs)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"updated": affected})
 }
 
 func handleInbound(c *gin.Context) {

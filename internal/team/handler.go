@@ -14,10 +14,20 @@ func RegisterRoutes(r *gin.Engine) {
 	g.Use(auth.AuthRequired())
 	{
 		g.GET("", handleList)
+		g.GET("/activity", handleActivity)
 		g.POST("/invite", handleInvite)
 		g.PATCH("/:id/role", handleUpdateRole)
 		g.DELETE("/:id", handleRemove)
 	}
+}
+
+func handleActivity(c *gin.Context) {
+	items, err := Activity(database.DB, auth.GetUserID(c))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
+	c.JSON(http.StatusOK, items)
 }
 
 func handleList(c *gin.Context) {

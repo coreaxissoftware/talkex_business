@@ -3,10 +3,13 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -18,6 +21,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/automation"
 	"github.com/coreaxissoftware/talkex_business/internal/billing"
+	"github.com/coreaxissoftware/talkex_business/internal/businesshours"
 	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
 	"github.com/coreaxissoftware/talkex_business/internal/canned"
 	"github.com/coreaxissoftware/talkex_business/internal/channels"
@@ -265,6 +269,14 @@ func main() {
 		})
 	})
 
+	// awaySentAt tracks when we last sent an away-message per contact
+	// so an out-of-hours user pinging every minute doesn't get one
+	// auto-reply per message.
+	awaySentAt := struct {
+		sync.Mutex
+		m map[string]time.Time
+	}{m: make(map[string]time.Time)}
+
 	// On every inbound message we (a) fire matching automation rules,
 	// (b) drop an in-app notification, and (c) deliver the event to any
 	// subscribed outbound webhooks. Each is best-effort.
@@ -324,6 +336,67 @@ func main() {
 			"message":      msg,
 			"conversation": conv,
 		})
+
+		// (d) Business-hours away message — outside configured window
+		// send a one-off auto-reply and dedupe per contact for 24h so
+		// a chatty visitor isn't spammed. Load owner prefs on demand.
+		if _, prefs, err := settings.Get(database.DB, ownerID); err == nil && prefs.BusinessHoursEnabled && prefs.AwayMessage != "" {
+			cfg := businesshours.Config{
+				Enabled:   prefs.BusinessHoursEnabled,
+				Days:      prefs.BusinessDays,
+				OpenTime:  prefs.BusinessOpenTime,
+				CloseTime: prefs.BusinessCloseTime,
+				Timezone:  prefs.Timezone,
+			}
+			if !businesshours.IsOpen(cfg, time.Now()) {
+				awaySentAt.Lock()
+				last, seen := awaySentAt.m[conv.ContactID]
+				should := !seen || time.Since(last) > 24*time.Hour
+				if should {
+					awaySentAt.m[conv.ContactID] = time.Now()
+				}
+				awaySentAt.Unlock()
+				if should {
+					_, _, err := conversations.SendOutbound(database.DB, ownerID, &conversations.SendInput{
+						ContactID: conv.ContactID,
+						Channel:   conv.Channel,
+						Body:      prefs.AwayMessage,
+					})
+					if err != nil {
+						log.Printf("away-message send failed: %v", err)
+					}
+				}
+			}
+		}
+
+		// (e) AI auto-tag on inbound — classify sentiment, add label.
+		// Best-effort: never blocks the inbound path; async via goroutine
+		// so the visitor's ack isn't delayed by the Claude call.
+		if _, prefs, err := settings.Get(database.DB, ownerID); err == nil && prefs.AIAutoTagEnabled {
+			go func(oid, cid, cid2 string) {
+				res, err := ai.Sentiment(context.Background(), []ai.Message{{Direction: "inbound", Body: msg.Body}})
+				if err != nil || res == nil || res.Score == "" {
+					return
+				}
+				// Merge into the conversation's labels JSON array.
+				var conv2 conversations.Conversation
+				if err := database.DB.Where("id = ?", cid).First(&conv2).Error; err != nil {
+					return
+				}
+				var labels []string
+				_ = json.Unmarshal([]byte(conv2.Labels), &labels)
+				label := "sentiment:" + res.Score
+				// Drop any prior sentiment: label so the tag reflects
+				// only the latest inbound message.
+				out := []string{label}
+				for _, l := range labels {
+					if !strings.HasPrefix(l, "sentiment:") {
+						out = append(out, l)
+					}
+				}
+				_, _ = conversations.UpdateConversation(database.DB, &conv2, &conversations.UpdateInput{Labels: &out})
+			}(ownerID, conv.ID, "")
+		}
 	})
 
 	// Wire campaign enqueuer through the messaging engine

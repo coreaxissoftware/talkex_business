@@ -138,3 +138,75 @@ func Update(db *gorm.DB, c *Contact, in *UpdateInput) (*Contact, error) {
 func Delete(db *gorm.DB, c *Contact) error {
 	return db.Delete(c).Error
 }
+
+// Merge folds `dupID` into `keepID` — reassigns every conversation
+// row belonging to the dup to the keep contact, then deletes the dup.
+// Tags are set-unioned. Custom fields prefer the keep contact's value
+// when both have one, else fall back to the dup's. Cross-tenant safe:
+// both contacts must belong to ownerID.
+func Merge(db *gorm.DB, ownerID, keepID, dupID string) (*Contact, error) {
+	if keepID == dupID {
+		return nil, errors.New("cannot merge a contact into itself")
+	}
+	keep, err := GetByID(db, ownerID, keepID)
+	if err != nil {
+		return nil, err
+	}
+	dup, err := GetByID(db, ownerID, dupID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Move all conversations from dup to keep (raw SQL — avoids a
+	// circular import on the conversations package).
+	if err := db.Exec("UPDATE conversations SET contact_id = ? WHERE contact_id = ? AND owner_id = ?",
+		keepID, dupID, ownerID).Error; err != nil {
+		return nil, err
+	}
+
+	// Union tags
+	var keepTags, dupTags []string
+	_ = json.Unmarshal(keep.Tags, &keepTags)
+	_ = json.Unmarshal(dup.Tags, &dupTags)
+	seen := map[string]bool{}
+	merged := []string{}
+	for _, t := range append(keepTags, dupTags...) {
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		merged = append(merged, t)
+	}
+	tagJSON, _ := json.Marshal(merged)
+	keep.Tags = tagJSON
+
+	// Prefer keep's fields but fill from dup if keep is empty.
+	if (keep.Name == nil || *keep.Name == "") && dup.Name != nil {
+		keep.Name = dup.Name
+	}
+	if (keep.Email == nil || *keep.Email == "") && dup.Email != nil {
+		keep.Email = dup.Email
+	}
+	// Merge custom fields: keep wins on conflict.
+	var keepFields, dupFields map[string]interface{}
+	_ = json.Unmarshal(keep.CustomFields, &keepFields)
+	_ = json.Unmarshal(dup.CustomFields, &dupFields)
+	if keepFields == nil {
+		keepFields = map[string]interface{}{}
+	}
+	for k, v := range dupFields {
+		if _, exists := keepFields[k]; !exists {
+			keepFields[k] = v
+		}
+	}
+	fJSON, _ := json.Marshal(keepFields)
+	keep.CustomFields = fJSON
+
+	if err := db.Save(keep).Error; err != nil {
+		return nil, err
+	}
+	if err := db.Delete(dup).Error; err != nil {
+		return nil, err
+	}
+	return keep, nil
+}

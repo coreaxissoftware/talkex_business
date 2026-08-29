@@ -28,7 +28,31 @@ func RegisterRoutes(r *gin.Engine) {
 		g.POST("/import-csv", handleImportCSV)
 		g.GET("/export-csv", handleExportCSV)
 		g.POST("/:id/opt-in", handleOptIn)
+		g.POST("/merge", handleMerge)
 	}
+}
+
+type mergeReq struct {
+	KeepID string `json:"keep_id" binding:"required"`
+	DupID  string `json:"dup_id" binding:"required"`
+}
+
+func handleMerge(c *gin.Context) {
+	var req mergeReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	merged, err := Merge(database.DB, auth.GetUserID(c), req.KeepID, req.DupID)
+	if err == ErrContactNotFound {
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Contact not found"})
+		return
+	}
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, merged)
 }
 
 func handleList(c *gin.Context) {
