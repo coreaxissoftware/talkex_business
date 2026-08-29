@@ -14,6 +14,8 @@ import type {
   TemplateStatus,
   TemplateCreateInput,
   TemplateUpdateInput,
+  TemplateButton,
+  TemplateListRow,
 } from '../types/template'
 import Modal from '../components/Modal'
 import TemplatePreview from '../components/TemplatePreview'
@@ -45,6 +47,13 @@ interface FormState {
   body: string
   variables: string
   status: TemplateStatus
+  // Interactive & media (WhatsApp-only)
+  header: string
+  footer: string
+  mediaType: string
+  mediaURL: string
+  buttons: TemplateButton[]
+  listRows: TemplateListRow[]
 }
 
 const emptyForm: FormState = {
@@ -54,6 +63,12 @@ const emptyForm: FormState = {
   body: '',
   variables: '',
   status: 'draft',
+  header: '',
+  footer: '',
+  mediaType: '',
+  mediaURL: '',
+  buttons: [],
+  listRows: [],
 }
 
 function varsToArray(input: string): string[] {
@@ -112,6 +127,12 @@ export default function Templates() {
       body: t.body,
       variables: t.variables.join(', '),
       status: t.status,
+      header: t.header || '',
+      footer: t.footer || '',
+      mediaType: t.media_type || '',
+      mediaURL: t.media_url || '',
+      buttons: t.buttons || [],
+      listRows: t.list_rows || [],
     })
     setFormError('')
     setModalOpen(true)
@@ -122,12 +143,22 @@ export default function Templates() {
     setFormError('')
     setSaving(true)
     try {
+      // Only include WhatsApp-specific interactive fields when relevant.
+      const interactive = form.channel === 'whatsapp' ? {
+        header: form.header,
+        footer: form.footer,
+        media_type: form.mediaType,
+        media_url: form.mediaURL,
+        buttons: form.buttons,
+        list_rows: form.listRows,
+      } : {}
       if (editing) {
         const payload: TemplateUpdateInput = {
           name: form.name,
           body: form.body,
           variables: varsToArray(form.variables),
           status: form.status,
+          ...interactive,
         }
         const updated = await templatesService.update(editing.id, payload)
         setTemplates((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
@@ -138,6 +169,7 @@ export default function Templates() {
           channel: form.channel,
           body: form.body,
           variables: varsToArray(form.variables),
+          ...interactive,
         }
         const created = await templatesService.create(payload)
         setTemplates((prev) => [created, ...prev])
@@ -439,6 +471,152 @@ export default function Templates() {
               placeholder="1, 2"
             />
           </div>
+
+          {form.channel === 'whatsapp' && (
+            <div className="space-y-3 border-t border-gray-100 pt-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400">WhatsApp interactive & media</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Header (short)</label>
+                  <input value={form.header} onChange={e => setForm({...form, header: e.target.value})} maxLength={60}
+                    placeholder="e.g. Order shipped"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Footer</label>
+                  <input value={form.footer} onChange={e => setForm({...form, footer: e.target.value})} maxLength={60}
+                    placeholder="e.g. Powered by TalkEx"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Media type</label>
+                  <select value={form.mediaType} onChange={e => setForm({...form, mediaType: e.target.value})}
+                    className="w-full rounded-lg border border-gray-300 px-2 py-2 text-sm outline-none cursor-pointer">
+                    <option value="">(none)</option>
+                    <option value="image">Image</option>
+                    <option value="video">Video</option>
+                    <option value="document">Document</option>
+                    <option value="audio">Audio</option>
+                  </select>
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Media URL</label>
+                  <input value={form.mediaURL} onChange={e => setForm({...form, mediaURL: e.target.value})}
+                    placeholder="https://…"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500" />
+                </div>
+              </div>
+
+              {/* Buttons editor (max 3) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-gray-700">Buttons ({form.buttons.length}/3)</label>
+                  {form.buttons.length < 3 && (
+                    <button type="button"
+                      onClick={() => setForm({...form, buttons: [...form.buttons, {type: 'quick_reply', text: ''}]})}
+                      className="text-[11px] font-medium text-primary-600 hover:text-primary-700">
+                      + Add button
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  {form.buttons.map((b, i) => (
+                    <div key={i} className="flex items-center gap-1.5 rounded-lg border border-gray-200 p-1.5">
+                      <select value={b.type}
+                        onChange={e => {
+                          const copy = [...form.buttons]
+                          copy[i] = {...b, type: e.target.value as TemplateButton['type']}
+                          setForm({...form, buttons: copy})
+                        }}
+                        className="rounded border border-gray-200 px-1.5 py-1 text-[11px] cursor-pointer">
+                        <option value="quick_reply">Quick reply</option>
+                        <option value="url">URL</option>
+                        <option value="phone">Phone</option>
+                      </select>
+                      <input value={b.text} placeholder="Button text" maxLength={20}
+                        onChange={e => {
+                          const copy = [...form.buttons]
+                          copy[i] = {...b, text: e.target.value}
+                          setForm({...form, buttons: copy})
+                        }}
+                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:border-primary-500" />
+                      {b.type === 'url' && (
+                        <input value={b.url || ''} placeholder="https://…"
+                          onChange={e => {
+                            const copy = [...form.buttons]
+                            copy[i] = {...b, url: e.target.value}
+                            setForm({...form, buttons: copy})
+                          }}
+                          className="w-32 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:border-primary-500" />
+                      )}
+                      {b.type === 'phone' && (
+                        <input value={b.phone || ''} placeholder="+91…"
+                          onChange={e => {
+                            const copy = [...form.buttons]
+                            copy[i] = {...b, phone: e.target.value}
+                            setForm({...form, buttons: copy})
+                          }}
+                          className="w-32 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:border-primary-500" />
+                      )}
+                      <button type="button"
+                        onClick={() => setForm({...form, buttons: form.buttons.filter((_, j) => j !== i)})}
+                        className="p-1 text-gray-400 hover:text-red-600" title="Remove">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* List rows editor (mutually exclusive with buttons in Meta, but we allow both stored) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-gray-700">List rows ({form.listRows.length})</label>
+                  <button type="button"
+                    onClick={() => setForm({...form, listRows: [...form.listRows, {id: '', title: '', description: ''}]})}
+                    className="text-[11px] font-medium text-primary-600 hover:text-primary-700">
+                    + Add row
+                  </button>
+                </div>
+                <div className="space-y-1.5">
+                  {form.listRows.map((r, i) => (
+                    <div key={i} className="flex items-center gap-1.5 rounded-lg border border-gray-200 p-1.5">
+                      <input value={r.id} placeholder="row_id"
+                        onChange={e => {
+                          const copy = [...form.listRows]
+                          copy[i] = {...r, id: e.target.value}
+                          setForm({...form, listRows: copy})
+                        }}
+                        className="w-24 rounded border border-gray-200 px-2 py-1 text-xs font-mono outline-none focus:border-primary-500" />
+                      <input value={r.title} placeholder="Title" maxLength={24}
+                        onChange={e => {
+                          const copy = [...form.listRows]
+                          copy[i] = {...r, title: e.target.value}
+                          setForm({...form, listRows: copy})
+                        }}
+                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:border-primary-500" />
+                      <input value={r.description || ''} placeholder="Description" maxLength={72}
+                        onChange={e => {
+                          const copy = [...form.listRows]
+                          copy[i] = {...r, description: e.target.value}
+                          setForm({...form, listRows: copy})
+                        }}
+                        className="flex-1 rounded border border-gray-200 px-2 py-1 text-xs outline-none focus:border-primary-500" />
+                      <button type="button"
+                        onClick={() => setForm({...form, listRows: form.listRows.filter((_, j) => j !== i)})}
+                        className="p-1 text-gray-400 hover:text-red-600" title="Remove">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {editing && (
             <div>
