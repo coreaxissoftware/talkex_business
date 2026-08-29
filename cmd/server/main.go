@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/coreaxissoftware/talkex_business/internal/ai"
 	"github.com/coreaxissoftware/talkex_business/internal/analytics"
 	"github.com/coreaxissoftware/talkex_business/internal/audit"
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
@@ -166,6 +167,7 @@ func main() {
 	csat.RegisterRoutes(r)
 	payments.RegisterRoutes(r)
 	flows.RegisterRoutes(r)
+	ai.RegisterRoutes(r)
 	channels.RegisterWebhookRoutes(r)
 
 	// Wire payments → wallet credit. Uses paymentID as idempotency key
@@ -504,6 +506,36 @@ func main() {
 
 	// Background flow sweeper — advances waiting steps every 30s
 	flows.StartSweeper(database.DB, 30*time.Second)
+
+	// Wire AI conversation fetcher — pulls last 30 messages + contact name
+	ai.RegisterConversationFetcher(func(ownerID, conversationID string) (string, []ai.Message, error) {
+		conv, err := conversations.GetByID(database.DB, ownerID, conversationID)
+		if err != nil {
+			return "", nil, err
+		}
+		msgs, err := conversations.ListMessages(database.DB, conv.ID)
+		if err != nil {
+			return "", nil, err
+		}
+		// Keep at most last 30 turns for context — enough for continuity, under our token cap
+		if len(msgs) > 30 {
+			msgs = msgs[len(msgs)-30:]
+		}
+		out := make([]ai.Message, len(msgs))
+		for i, m := range msgs {
+			out[i] = ai.Message{Direction: m.Direction, Body: m.Body, CreatedAt: m.CreatedAt}
+		}
+		// Resolve contact name
+		name := "customer"
+		if ct, err := contacts.GetByID(database.DB, ownerID, conv.ContactID); err == nil && ct != nil {
+			if ct.Name != nil && *ct.Name != "" {
+				name = *ct.Name
+			} else {
+				name = ct.PhoneNumber
+			}
+		}
+		return name, out, nil
+	})
 
 	// Background campaign scheduler — auto-launches campaigns when scheduled_at arrives
 	campaigns.StartScheduler(database.DB)

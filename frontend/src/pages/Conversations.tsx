@@ -13,8 +13,10 @@ import {
   Plus,
   Zap,
   Star,
+  Sparkles,
 } from 'lucide-react'
 import CannedPicker from '../components/CannedPicker'
+import AiPanel from '../components/AiPanel'
 import { csatService } from '../services/csat'
 import { conversationsService } from '../services/conversations'
 import { contactsService } from '../services/contacts'
@@ -92,6 +94,7 @@ export default function Conversations() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [csatOpen, setCsatOpen] = useState(false)
   const [csatScore, setCsatScore] = useState(0)
   const [csatComment, setCsatComment] = useState('')
@@ -500,6 +503,18 @@ export default function Conversations() {
                 </div>
                 <button
                   type="button"
+                  onClick={() => setAiOpen(o => !o)}
+                  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium ${
+                    aiOpen
+                      ? 'border-primary-400 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                      : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                  }`}
+                  title="AI Assist"
+                >
+                  <Sparkles size={14} />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setCsatOpen(true)}
                   className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   title="Request CSAT rating"
@@ -519,6 +534,15 @@ export default function Conversations() {
           </>
         )}
       </main>
+
+      {/* AI Panel */}
+      {selected && aiOpen && (
+        <AiPanel
+          conversationId={selected.id}
+          onInsertReply={(text) => { setSendBody(text); setAiOpen(false) }}
+          onClose={() => setAiOpen(false)}
+        />
+      )}
 
       {/* CSAT rating modal */}
       {csatOpen && (
