@@ -8,6 +8,7 @@ package otp
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"errors"
 	"fmt"
 	"log"
@@ -141,7 +142,9 @@ func Verify(phone, email, code string) error {
 
 	e.Attempts++
 
-	if e.Code != code {
+	// Constant-time comparison — string equality short-circuits on
+	// first differing byte and leaks the correct prefix via timing.
+	if subtle.ConstantTimeCompare([]byte(e.Code), []byte(code)) != 1 {
 		return ErrInvalidCode
 	}
 
@@ -150,7 +153,7 @@ func Verify(phone, email, code string) error {
 	return nil
 }
 
-// Cleanup removes expired entries. Call periodically in production.
+// Cleanup removes expired entries. Called periodically by StartCleanup.
 func Cleanup() {
 	store := defaultStore
 	store.mu.Lock()
@@ -162,4 +165,17 @@ func Cleanup() {
 			delete(store.entries, k)
 		}
 	}
+}
+
+// StartCleanup launches a background ticker that reaps expired OTPs
+// so the in-memory store doesn't grow unbounded across abandoned
+// signups. Call once from main.go.
+func StartCleanup(interval time.Duration) {
+	go func() {
+		t := time.NewTicker(interval)
+		defer t.Stop()
+		for range t.C {
+			Cleanup()
+		}
+	}()
 }

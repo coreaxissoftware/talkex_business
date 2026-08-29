@@ -11,11 +11,27 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
 )
+
+// Shared client — the SDK is designed to be constructed once and
+// reused across requests, so we build lazily on the first real call.
+var (
+	sharedClient     *anthropic.Client
+	sharedClientOnce sync.Once
+)
+
+func client() *anthropic.Client {
+	sharedClientOnce.Do(func() {
+		c := anthropic.NewClient(option.WithAPIKey(os.Getenv("ANTHROPIC_API_KEY")))
+		sharedClient = &c
+	})
+	return sharedClient
+}
 
 // Model is the Claude model used for every AI call. Opus 5 is the
 // default per the claude-api skill guidance; users can override via
@@ -55,8 +71,7 @@ Keep it under 40 words. No preamble, no quotation marks — just the reply text.
 Conversation:
 %s`, contactName, transcript)
 
-	client := anthropic.NewClient(option.WithAPIKey(os.Getenv("ANTHROPIC_API_KEY")))
-	resp, err := client.Messages.New(ctx, anthropic.MessageNewParams{
+	resp, err := client().Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     modelID(),
 		MaxTokens: 512,
 		Messages: []anthropic.MessageParam{
@@ -84,8 +99,7 @@ No preamble. Contact: %s
 Conversation:
 %s`, contactName, transcript)
 
-	client := anthropic.NewClient(option.WithAPIKey(os.Getenv("ANTHROPIC_API_KEY")))
-	resp, err := client.Messages.New(ctx, anthropic.MessageNewParams{
+	resp, err := client().Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     modelID(),
 		MaxTokens: 512,
 		Messages: []anthropic.MessageParam{
@@ -119,8 +133,7 @@ Line 2: a short (max 20 words) reason
 Conversation:
 %s`, transcript)
 
-	client := anthropic.NewClient(option.WithAPIKey(os.Getenv("ANTHROPIC_API_KEY")))
-	resp, err := client.Messages.New(ctx, anthropic.MessageNewParams{
+	resp, err := client().Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     modelID(),
 		MaxTokens: 128,
 		Messages: []anthropic.MessageParam{

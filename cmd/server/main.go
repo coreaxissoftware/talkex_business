@@ -525,6 +525,20 @@ func main() {
 	// Background flow sweeper — advances waiting steps every 30s
 	flows.StartSweeper(database.DB, 30*time.Second)
 
+	// OTP reaper — expires abandoned in-memory entries so the store
+	// doesn't grow unbounded across dropped signups.
+	otp.StartCleanup(5 * time.Minute)
+
+	// CSAT ownership resolver — canonicalizes contact_id + channel
+	// and rejects submissions for conversations the caller doesn't own.
+	csat.RegisterConversationOwnerCheck(func(conversationID string) (string, string, string, error) {
+		var conv conversations.Conversation
+		if err := database.DB.Where("id = ?", conversationID).First(&conv).Error; err != nil {
+			return "", "", "", err
+		}
+		return conv.OwnerID, conv.ContactID, conv.Channel, nil
+	})
+
 	// Wire AI conversation fetcher — pulls last 30 messages + contact name
 	ai.RegisterConversationFetcher(func(ownerID, conversationID string) (string, []ai.Message, error) {
 		conv, err := conversations.GetByID(database.DB, ownerID, conversationID)

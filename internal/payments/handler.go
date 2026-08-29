@@ -1,6 +1,11 @@
 package payments
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 
@@ -10,6 +15,20 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 )
+
+// verifyRazorpaySignature checks the X-Razorpay-Signature header
+// (HMAC-SHA256(secret, rawBody), hex-encoded) against a constant-time
+// comparison. Returns true when the signature matches.
+func verifyRazorpaySignature(rawBody []byte, signature, secret string) bool {
+	if signature == "" || secret == "" {
+		return false
+	}
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(rawBody)
+	expected := hex.EncodeToString(mac.Sum(nil))
+	// hmac.Equal is constant-time
+	return hmac.Equal([]byte(expected), []byte(signature))
+}
 
 // RegisterRoutes wires payment endpoints.
 func RegisterRoutes(r *gin.Engine) {
@@ -107,9 +126,43 @@ func handleDevSimulate(c *gin.Context) {
 }
 
 // handleWebhook receives Razorpay webhook events.
-// In production, this validates the X-Razorpay-Signature header using
-// the RAZORPAY_WEBHOOK_SECRET. Dev mode accepts unsigned events.
+//
+// Auth model:
+//   - When RAZORPAY_WEBHOOK_SECRET is set, HMAC signature verification
+//     is enforced. Missing / mismatched signatures are rejected 401.
+//   - When it is NOT set AND the server is in dev mode, unsigned
+//     events are accepted (so a local `curl` can exercise the flow).
+//   - When it is NOT set outside dev mode, the endpoint refuses to
+//     credit anything so a forgotten production config can't be
+//     exploited to mint free wallet balance.
 func handleWebhook(c *gin.Context) {
+	// Read the raw body — signature must be over the exact bytes the
+	// provider signed. c.ShouldBindJSON re-serialization would break
+	// the HMAC comparison.
+	raw, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"detail": "Cannot read body"})
+		return
+	}
+
+	cfg := config.Get()
+	secret := cfg.RazorpayWebhookSecret
+	signature := c.GetHeader("X-Razorpay-Signature")
+
+	if secret != "" {
+		if !verifyRazorpaySignature(raw, signature, secret) {
+			log.Printf("payments: webhook signature verification failed")
+			c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid signature"})
+			return
+		}
+	} else if !cfg.IsDev() {
+		// Fail closed in production: without a secret we cannot trust
+		// any caller, so refuse rather than silently credit wallets.
+		log.Printf("payments: refusing webhook, RAZORPAY_WEBHOOK_SECRET not set (non-dev)")
+		c.JSON(http.StatusServiceUnavailable, gin.H{"detail": "Webhook not configured"})
+		return
+	}
+
 	var payload struct {
 		Event   string `json:"event"`
 		Payload struct {
@@ -122,14 +175,10 @@ func handleWebhook(c *gin.Context) {
 			} `json:"payment"`
 		} `json:"payload"`
 	}
-	if err := c.ShouldBindJSON(&payload); err != nil {
+	if err := json.Unmarshal(raw, &payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Invalid payload"})
 		return
 	}
-
-	// Production would verify HMAC signature here.
-	// signature := c.GetHeader("X-Razorpay-Signature")
-	// if !VerifySignature(rawBody, signature, cfg.RazorpayWebhookSecret) { ... }
 
 	if payload.Event == "payment.captured" && payload.Payload.Payment.Entity.Status == "captured" {
 		orderID := payload.Payload.Payment.Entity.OrderID

@@ -7,7 +7,19 @@ import (
 	"gorm.io/gorm"
 )
 
-var ErrInvalidScore = errors.New("score must be between 1 and 5")
+var (
+	ErrInvalidScore    = errors.New("score must be between 1 and 5")
+	ErrConversationNotOwned = errors.New("conversation does not belong to caller")
+)
+
+// ConversationOwnerCheck resolves a conversation to its owner without
+// importing conversations (avoids an import cycle). Wired from main.go.
+type ConversationOwnerCheck func(conversationID string) (ownerID, contactID, channel string, err error)
+
+var convOwnerCheck ConversationOwnerCheck
+
+// RegisterConversationOwnerCheck wires the ownership resolver.
+func RegisterConversationOwnerCheck(f ConversationOwnerCheck) { convOwnerCheck = f }
 
 type SubmitInput struct {
 	ConversationID string  `json:"conversation_id" binding:"required"`
@@ -22,14 +34,30 @@ func Submit(db *gorm.DB, ownerID string, in *SubmitInput) (*Rating, error) {
 	if in.Score < 1 || in.Score > 5 {
 		return nil, ErrInvalidScore
 	}
+
+	// Verify the conversation actually belongs to the caller and
+	// canonicalize contact_id / channel from the row rather than
+	// trusting client-supplied values (prevents cross-tenant
+	// dashboard pollution and stale-field mismatches).
+	contactID := in.ContactID
+	channel := in.Channel
+	if convOwnerCheck != nil {
+		convOwner, convContactID, convChannel, err := convOwnerCheck(in.ConversationID)
+		if err != nil || convOwner != ownerID {
+			return nil, ErrConversationNotOwned
+		}
+		contactID = convContactID
+		channel = convChannel
+	}
+
 	r := &Rating{
 		OwnerID:        ownerID,
 		ConversationID: in.ConversationID,
-		ContactID:      in.ContactID,
+		ContactID:      contactID,
 		AgentUserID:    in.AgentUserID,
 		Score:          in.Score,
 		Comment:        in.Comment,
-		Channel:        in.Channel,
+		Channel:        channel,
 	}
 	if err := db.Create(r).Error; err != nil {
 		return nil, err

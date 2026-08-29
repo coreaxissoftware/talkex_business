@@ -10,6 +10,7 @@ package auth
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
 	"log"
@@ -20,6 +21,11 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 )
+
+// oauthStateCookie is the browser-side pin we compare against the
+// state echoed back by the provider. Short-lived; HttpOnly and
+// SameSite=Lax so it survives the top-level redirect back from Google.
+const oauthStateCookie = "talkex_oauth_state"
 
 // OAuthProvider holds config for one social login provider.
 type OAuthProvider struct {
@@ -88,8 +94,42 @@ func RegisterOAuthRoutes(r *gin.Engine) {
 // randomState generates a CSRF-safe random state parameter.
 func randomState() string {
 	b := make([]byte, 16)
-	rand.Read(b)
+	// If rand.Read ever fails on this platform we abandon the OAuth
+	// attempt rather than return a predictable value.
+	if _, err := rand.Read(b); err != nil {
+		return ""
+	}
 	return hex.EncodeToString(b)
+}
+
+// setStateCookie pins `state` in an HttpOnly cookie so the callback
+// can compare it against whatever the provider echoes back. SameSite
+// Lax lets the cookie ride the top-level redirect from Google/etc.
+func setStateCookie(c *gin.Context, state string) {
+	// 10-minute lifetime — plenty for a real user click, expired for
+	// a link forged and sent to a victim yesterday.
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie(oauthStateCookie, state, 600, "/", "", false, true)
+}
+
+// verifyStateCookie checks the state param against the pinned cookie
+// using a constant-time compare and clears the cookie on success. It
+// returns false if either is missing or they mismatch.
+func verifyStateCookie(c *gin.Context, got string) bool {
+	if got == "" {
+		return false
+	}
+	pinned, err := c.Cookie(oauthStateCookie)
+	if err != nil || pinned == "" {
+		return false
+	}
+	ok := subtle.ConstantTimeCompare([]byte(pinned), []byte(got)) == 1
+	if ok {
+		// Consume the cookie so it can't be replayed.
+		c.SetSameSite(http.SameSiteLaxMode)
+		c.SetCookie(oauthStateCookie, "", -1, "/", "", false, true)
+	}
+	return ok
 }
 
 func handleOAuthInit(c *gin.Context) {
@@ -107,8 +147,10 @@ func handleOAuthInit(c *gin.Context) {
 
 	if cfg.IsDev() && clientID == "" {
 		// Dev mode simulation — skip real OAuth, redirect straight to callback
-		// with a simulated code
+		// with a simulated code. Still pin the state cookie so the callback's
+		// state check exercises the same path as production.
 		state := randomState()
+		setStateCookie(c, state)
 		callbackURL := fmt.Sprintf("%s/auth/oauth/%s/callback?code=dev_sim_%s&state=%s",
 			cfg.BaseURL(), providerName, providerName, state)
 		c.Redirect(http.StatusTemporaryRedirect, callbackURL)
@@ -123,8 +165,11 @@ func handleOAuthInit(c *gin.Context) {
 		return
 	}
 
-	// Real OAuth flow — build authorization URL
+	// Real OAuth flow — build authorization URL. Pin state so the
+	// callback can verify the browser that started this flow is the
+	// same one that came back with the code (CSRF protection).
 	state := randomState()
+	setStateCookie(c, state)
 	redirectURI := fmt.Sprintf("%s/auth/oauth/%s/callback", cfg.BaseURL(), providerName)
 	authURL := fmt.Sprintf("%s?client_id=%s&redirect_uri=%s&response_type=code&scope=%s&state=%s",
 		provider.AuthURL, clientID, redirectURI,
@@ -148,6 +193,13 @@ func handleOAuthCallback(c *gin.Context) {
 			errMsg = "No authorization code received"
 		}
 		c.JSON(http.StatusBadRequest, gin.H{"detail": errMsg})
+		return
+	}
+
+	// CSRF: verify the state param matches the cookie we set on init.
+	// Rejects forged callback URLs pointing at another user's session.
+	if !verifyStateCookie(c, c.Query("state")) {
+		c.JSON(http.StatusForbidden, gin.H{"detail": "Invalid or missing OAuth state"})
 		return
 	}
 

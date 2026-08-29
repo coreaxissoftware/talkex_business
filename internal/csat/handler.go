@@ -53,6 +53,10 @@ func handleSubmit(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
 		return
 	}
+	if err == ErrConversationNotOwned {
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Conversation not found"})
+		return
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
 		return

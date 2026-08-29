@@ -27,6 +27,28 @@ var (
 	fnMu     sync.RWMutex
 )
 
+// runLocks serializes advance() for a single RunState so that a
+// simultaneous inbound message + wait-timer expiry don't both walk
+// past the same branch and double-fire send/assign/tag callbacks.
+// One lock per RunState.ID; locks live for the process's lifetime,
+// which is fine — RunState count is bounded per owner and each entry
+// is a few bytes.
+var (
+	runLocks   = map[string]*sync.Mutex{}
+	runLocksMu sync.Mutex
+)
+
+func lockRun(runID string) *sync.Mutex {
+	runLocksMu.Lock()
+	defer runLocksMu.Unlock()
+	m, ok := runLocks[runID]
+	if !ok {
+		m = &sync.Mutex{}
+		runLocks[runID] = m
+	}
+	return m
+}
+
 func RegisterSender(f SendFn)     { fnMu.Lock(); sendFn = f; fnMu.Unlock() }
 func RegisterAssigner(f AssignFn) { fnMu.Lock(); assignFn = f; fnMu.Unlock() }
 func RegisterTagger(f TagFn)      { fnMu.Lock(); tagFn = f; fnMu.Unlock() }
@@ -53,6 +75,11 @@ func StartRun(db *gorm.DB, f *Flow, contactID, channel string) (*RunState, error
 	BumpRun(db, f.ID)
 
 	// Execute inline until we hit a wait/branch or the end.
+	// Serialize on this run's lock (a subsequent inbound could arrive
+	// while we're still walking the initial straight-line steps).
+	mu := lockRun(rs.ID)
+	mu.Lock()
+	defer mu.Unlock()
 	advance(db, f, rs, steps, "")
 	return rs, nil
 }
@@ -66,15 +93,32 @@ func HandleInbound(db *gorm.DB, ownerID, contactID, body string) {
 		return
 	}
 	for i := range runs {
+		// Serialize on this run's lock — inbound and sweeper may
+		// race for the same RunState, and re-load under lock so we
+		// see whatever the winner just committed.
+		mu := lockRun(runs[i].ID)
+		mu.Lock()
+		var fresh RunState
+		if err := db.Where("id = ?", runs[i].ID).First(&fresh).Error; err != nil {
+			mu.Unlock()
+			continue
+		}
+		if fresh.Status != "active" {
+			mu.Unlock()
+			continue
+		}
 		var f Flow
-		if err := db.Where("id = ?", runs[i].FlowID).First(&f).Error; err != nil {
+		if err := db.Where("id = ?", fresh.FlowID).First(&f).Error; err != nil {
+			mu.Unlock()
 			continue
 		}
 		steps, err := f.GetSteps()
 		if err != nil {
+			mu.Unlock()
 			continue
 		}
-		advance(db, &f, &runs[i], steps, body)
+		advance(db, &f, &fresh, steps, body)
+		mu.Unlock()
 	}
 }
 
@@ -87,16 +131,30 @@ func SweepWaiting(db *gorm.DB) {
 		return
 	}
 	for i := range runs {
+		mu := lockRun(runs[i].ID)
+		mu.Lock()
+		// Re-read under the lock so we see whatever HandleInbound
+		// (or a prior sweep) already committed — skip if another
+		// worker already advanced this run past its wait.
+		var fresh RunState
+		if err := db.Where("id = ? AND status = ? AND waiting_until IS NOT NULL AND waiting_until <= ?",
+			runs[i].ID, "active", now).First(&fresh).Error; err != nil {
+			mu.Unlock()
+			continue
+		}
 		var f Flow
-		if err := db.Where("id = ?", runs[i].FlowID).First(&f).Error; err != nil {
+		if err := db.Where("id = ?", fresh.FlowID).First(&f).Error; err != nil {
+			mu.Unlock()
 			continue
 		}
 		steps, err := f.GetSteps()
 		if err != nil {
+			mu.Unlock()
 			continue
 		}
-		runs[i].WaitingUntil = nil
-		advance(db, &f, &runs[i], steps, "")
+		fresh.WaitingUntil = nil
+		advance(db, &f, &fresh, steps, "")
+		mu.Unlock()
 	}
 }
 

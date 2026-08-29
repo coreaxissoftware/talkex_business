@@ -89,6 +89,16 @@ func handleDelete(c *gin.Context) {
 }
 
 func handleBumpUsage(c *gin.Context) {
+	// Owner-scope check: reject foreign IDs so cross-tenant callers
+	// can't skew another owner's picker ordering (usage_count DESC).
+	if _, err := GetByID(database.DB, auth.GetUserID(c), c.Param("id")); err != nil {
+		if err == ErrNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"detail": "Not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		return
+	}
 	BumpUsage(database.DB, c.Param("id"))
 	c.Status(http.StatusNoContent)
 }
