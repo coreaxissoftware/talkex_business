@@ -36,6 +36,11 @@ type Config struct {
 	OAuthGitHubSecret     string
 	OAuthAppleClientID    string
 	OAuthAppleSecret      string
+
+	// Razorpay payment gateway
+	RazorpayKeyID         string
+	RazorpaySecret        string
+	RazorpayWebhookSecret string
 }
 
 var (
@@ -64,6 +69,10 @@ func Get() *Config {
 			OAuthGitHubSecret:     envOr("OAUTH_GITHUB_SECRET", ""),
 			OAuthAppleClientID:    envOr("OAUTH_APPLE_CLIENT_ID", ""),
 			OAuthAppleSecret:      envOr("OAUTH_APPLE_SECRET", ""),
+
+			RazorpayKeyID:         envOr("RAZORPAY_KEY_ID", ""),
+			RazorpaySecret:        envOr("RAZORPAY_SECRET", ""),
+			RazorpayWebhookSecret: envOr("RAZORPAY_WEBHOOK_SECRET", ""),
 		}
 
 		// Fail loud in non-dev environments if the JWT secret was left at

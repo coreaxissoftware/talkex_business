@@ -11,7 +11,11 @@ import {
   UserCheck,
   X,
   Plus,
+  Zap,
+  Star,
 } from 'lucide-react'
+import CannedPicker from '../components/CannedPicker'
+import { csatService } from '../services/csat'
 import { conversationsService } from '../services/conversations'
 import { contactsService } from '../services/contacts'
 import { teamService } from '../services/team'
@@ -87,6 +91,10 @@ export default function Conversations() {
   const [sendBody, setSendBody] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [csatOpen, setCsatOpen] = useState(false)
+  const [csatScore, setCsatScore] = useState(0)
+  const [csatComment, setCsatComment] = useState('')
 
   const [members, setMembers] = useState<TeamMember[]>([])
   const [newLabel, setNewLabel] = useState('')
@@ -220,6 +228,37 @@ export default function Conversations() {
     await conversationsService.update(selected.id, { assigned_to: '' })
     setRows(prev => prev.map(r => r.id === selected.id ? { ...r, assigned_to: null, assigned_name: null } : r))
     setSelected(prev => prev ? { ...prev, assigned_to: null, assigned_name: null } : prev)
+  }
+
+  const insertCanned = (body: string) => {
+    setSendBody(body)
+    setPickerOpen(false)
+  }
+
+  const handleBodyChange = (val: string) => {
+    setSendBody(val)
+    // Auto-open picker when user types "/" at the very start
+    if (val === '/' && !pickerOpen) setPickerOpen(true)
+    if (val === '' && pickerOpen) setPickerOpen(false)
+  }
+
+  const handleSubmitCsat = async () => {
+    if (!selected || csatScore < 1) return
+    try {
+      await csatService.submit({
+        conversation_id: selected.id,
+        contact_id: selected.contact_id,
+        agent_user_id: selected.assigned_to || undefined,
+        score: csatScore,
+        comment: csatComment,
+        channel: selected.channel,
+      })
+      setCsatOpen(false)
+      setCsatScore(0)
+      setCsatComment('')
+    } catch {
+      setError('Could not save CSAT rating.')
+    }
   }
 
   const handleSimulateInbound = async (e: FormEvent) => {
@@ -419,25 +458,54 @@ export default function Conversations() {
             </div>
 
             {/* Send box */}
-            <div className="border-t border-gray-200 bg-white px-6 py-3">
+            <div className="border-t border-gray-200 bg-white px-6 py-3 relative">
               {error && (
                 <div className="mb-2 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
                   {error}
                 </div>
               )}
+
+              {pickerOpen && (
+                <div className="px-0">
+                  <CannedPicker
+                    onInsert={(body) => insertCanned(body)}
+                    onClose={() => setPickerOpen(false)}
+                  />
+                </div>
+              )}
+
               <form onSubmit={handleSend} className="flex items-end gap-2">
-                <textarea
-                  value={sendBody}
-                  onChange={(e) => setSendBody(e.target.value)}
-                  placeholder={
-                    thread?.window_open
-                      ? 'Type a reply…'
-                      : 'Window closed — free-form send is disabled. Use a template.'
-                  }
-                  disabled={!thread?.window_open}
-                  rows={2}
-                  className="flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none disabled:bg-gray-50 disabled:text-gray-400"
-                />
+                <div className="flex-1 relative">
+                  <textarea
+                    value={sendBody}
+                    onChange={(e) => handleBodyChange(e.target.value)}
+                    placeholder={
+                      thread?.window_open
+                        ? 'Type a reply… (type "/" for canned replies)'
+                        : 'Window closed — free-form send is disabled. Use a template.'
+                    }
+                    disabled={!thread?.window_open}
+                    rows={2}
+                    className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 pr-10 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none disabled:bg-gray-50 disabled:text-gray-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    disabled={!thread?.window_open}
+                    className="absolute right-2 bottom-2 p-1 rounded text-gray-400 hover:text-primary-600 hover:bg-primary-50 disabled:opacity-40"
+                    title="Insert canned reply"
+                  >
+                    <Zap size={14} />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCsatOpen(true)}
+                  className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  title="Request CSAT rating"
+                >
+                  <Star size={14} />
+                </button>
                 <button
                   type="submit"
                   disabled={sending || !sendBody.trim() || !thread?.window_open}
@@ -451,6 +519,65 @@ export default function Conversations() {
           </>
         )}
       </main>
+
+      {/* CSAT rating modal */}
+      {csatOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setCsatOpen(false)} />
+          <div className="relative w-full max-w-md rounded-xl bg-white shadow-xl">
+            <div className="border-b border-gray-100 px-5 py-4">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <Star size={16} className="text-primary-600" />
+                Rate this conversation
+              </h3>
+              <p className="mt-1 text-xs text-gray-500">
+                Log a CSAT score after resolving. Feeds the Customer Satisfaction dashboard.
+              </p>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div className="flex items-center justify-center gap-2">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => setCsatScore(n)}
+                    className={`text-3xl transition-transform ${
+                      csatScore === n ? 'scale-125' : 'opacity-40 hover:opacity-80'
+                    }`}
+                    title={['Very unhappy', 'Unhappy', 'Neutral', 'Happy', 'Very happy'][n - 1]}
+                  >
+                    {['😞', '😕', '😐', '🙂', '😄'][n - 1]}
+                  </button>
+                ))}
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Comment (optional)</label>
+                <textarea
+                  rows={3}
+                  value={csatComment}
+                  onChange={e => setCsatComment(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                  placeholder="What could we do better?"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCsatOpen(false)}
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitCsat}
+                  disabled={csatScore < 1}
+                  className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-40"
+                >
+                  Save rating
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Simulate inbound modal */}
       {simOpen && (

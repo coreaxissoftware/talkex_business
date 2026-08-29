@@ -5,8 +5,11 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
+  CreditCard,
+  Check,
 } from 'lucide-react'
 import { walletService } from '../services/wallet'
+import { paymentsService } from '../services/payments'
 import type { Wallet, WalletTransaction } from '../types/wallet'
 import Modal from '../components/Modal'
 
@@ -38,6 +41,13 @@ export default function WalletPage() {
   const [reference, setReference] = useState('')
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
+
+  const [payOpen, setPayOpen] = useState(false)
+  const [payAmount, setPayAmount] = useState('')
+  const [payLoading, setPayLoading] = useState(false)
+  const [payOrderId, setPayOrderId] = useState('')
+  const [payDevMode, setPayDevMode] = useState(false)
+  const [payDone, setPayDone] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -97,6 +107,38 @@ export default function WalletPage() {
     }
   }
 
+  const openPay = () => {
+    setPayAmount(''); setPayOrderId(''); setPayDone(false); setPayDevMode(false)
+    setFormError(''); setPayOpen(true)
+  }
+
+  const handleCreateOrder = async () => {
+    const value = parseFloat(payAmount)
+    if (!value || value <= 0) { setFormError('Enter valid amount'); return }
+    setFormError(''); setPayLoading(true)
+    try {
+      const order = await paymentsService.createOrder(value)
+      setPayOrderId(order.order_id)
+      setPayDevMode(order.dev_mode)
+      // Production: open Razorpay Checkout modal here with order.order_id + order.key_id
+      // The Checkout success callback would POST to /payments/webhook via Razorpay's server.
+    } catch (err: any) {
+      setFormError(err.response?.data?.detail || 'Could not create order')
+    } finally { setPayLoading(false) }
+  }
+
+  const handleDevSimulate = async () => {
+    if (!payOrderId) return
+    setPayLoading(true)
+    try {
+      await paymentsService.devSimulate(payOrderId)
+      setPayDone(true)
+      load()
+    } catch (err: any) {
+      setFormError(err.response?.data?.detail || 'Simulation failed')
+    } finally { setPayLoading(false) }
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
@@ -131,13 +173,22 @@ export default function WalletPage() {
         <p className="text-4xl font-bold mt-1">
           {wallet ? formatMoney(wallet.balance, wallet.currency) : '—'}
         </p>
-        <button
-          onClick={openAddFunds}
-          className="mt-4 flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50 transition-colors"
-        >
-          <Plus size={16} />
-          Add Funds
-        </button>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={openPay}
+            className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-primary-700 hover:bg-primary-50 transition-colors"
+          >
+            <CreditCard size={16} />
+            Pay via Razorpay
+          </button>
+          <button
+            onClick={openAddFunds}
+            className="flex items-center gap-2 rounded-lg bg-white/15 px-4 py-2 text-sm font-medium text-white hover:bg-white/25 transition-colors border border-white/30"
+          >
+            <Plus size={16} />
+            Manual Credit
+          </button>
+        </div>
       </div>
 
       {/* Transaction history */}
@@ -271,6 +322,90 @@ export default function WalletPage() {
             </button>
           </div>
         </form>
+      </Modal>
+
+      {/* Razorpay Pay modal */}
+      <Modal open={payOpen} onClose={() => setPayOpen(false)} title="Pay via Razorpay">
+        <div className="space-y-4">
+          {formError && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+              {formError}
+            </div>
+          )}
+
+          {payDone ? (
+            <div className="text-center py-6">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 text-green-700 mb-3">
+                <Check size={28} />
+              </div>
+              <p className="text-sm font-medium text-gray-900">Payment successful</p>
+              <p className="text-xs text-gray-500 mt-1">₹{payAmount} credited to your wallet.</p>
+              <button onClick={() => setPayOpen(false)} className="mt-4 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+                Done
+              </button>
+            </div>
+          ) : payOrderId ? (
+            <>
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-700/50 px-3 py-2 text-xs">
+                <p className="text-gray-500">Order ID</p>
+                <p className="font-mono text-gray-900 dark:text-gray-100">{payOrderId}</p>
+                <p className="text-gray-500 mt-2">Amount</p>
+                <p className="font-semibold text-gray-900 dark:text-gray-100">₹{payAmount}</p>
+              </div>
+
+              {payDevMode ? (
+                <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-800">
+                  <p className="font-medium">Dev mode — Razorpay keys not configured.</p>
+                  <p className="mt-1">In production, the Razorpay Checkout modal opens here. Simulate the payment to test the credit flow.</p>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-xs text-blue-800">
+                  <p>Razorpay Checkout would open here. On success the webhook credits your wallet automatically.</p>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button onClick={() => { setPayOrderId(''); setPayAmount('') }} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Back
+                </button>
+                {payDevMode && (
+                  <button onClick={handleDevSimulate} disabled={payLoading} className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
+                    {payLoading ? 'Processing…' : 'Simulate Payment'}
+                  </button>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Amount (₹) *</label>
+                <input
+                  type="number" min="1" step="1"
+                  value={payAmount}
+                  onChange={e => setPayAmount(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none"
+                  placeholder="1000"
+                />
+                <div className="flex gap-2 mt-2">
+                  {QUICK_AMOUNTS.map(a => (
+                    <button key={a} type="button" onClick={() => setPayAmount(String(a))}
+                      className="rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-600 hover:border-primary-400 hover:text-primary-600">
+                      ₹{a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => setPayOpen(false)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button onClick={handleCreateOrder} disabled={payLoading} className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50">
+                  {payLoading ? 'Creating…' : 'Continue to Pay'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </Modal>
     </div>
   )
