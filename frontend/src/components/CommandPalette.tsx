@@ -54,6 +54,7 @@ const PAGES = [
   { path: '/wallet', label: 'Wallet', icon: Wallet, keywords: 'balance recharge credits' },
   { path: '/support', label: 'Support', icon: HelpCircle, keywords: 'help tickets' },
   { path: '/team', label: 'Team', icon: UsersRound, keywords: 'members roles invite' },
+  { path: '/team/activity', label: 'Team Activity', icon: UsersRound, keywords: 'agent workload csat productivity' },
   { path: '/settings', label: 'Settings', icon: Settings, keywords: 'preferences profile security' },
   { path: '/compliance', label: 'Compliance', icon: ShieldCheck, keywords: 'dpdp privacy consent' },
   { path: '/organizations', label: 'Organizations', icon: Building, keywords: 'multi-tenant reseller' },

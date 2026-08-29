@@ -37,4 +37,21 @@ export const conversationsService = {
     const res = await api.post('/conversations/inbound', data)
     return res.data
   },
+
+  async search(q: string): Promise<ConversationRow[]> {
+    const res = await api.get('/conversations/search', { params: { q } })
+    return res.data
+  },
+
+  async bulkAssign(ids: string[], agentUserID: string, agentName: string) {
+    const res = await api.post('/conversations/bulk-assign', {
+      ids, agent_user_id: agentUserID, agent_name: agentName,
+    })
+    return res.data
+  },
+
+  async bulkMarkRead(ids: string[]) {
+    const res = await api.post('/conversations/bulk-read', { ids })
+    return res.data
+  },
 }

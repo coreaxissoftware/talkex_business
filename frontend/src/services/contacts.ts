@@ -38,6 +38,11 @@ export const contactsService = {
     await api.delete(`/contacts/${id}`)
   },
 
+  async merge(keepID: string, dupID: string): Promise<Contact> {
+    const res = await api.post('/contacts/merge', { keep_id: keepID, dup_id: dupID })
+    return res.data
+  },
+
   async toggleOptIn(id: string, optedIn: boolean): Promise<Contact> {
     const res = await api.post(`/contacts/${id}/opt-in`, { opted_in: optedIn })
     return res.data

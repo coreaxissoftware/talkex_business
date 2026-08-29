@@ -36,6 +36,7 @@ import CsatPage from './pages/CsatPage'
 import BroadcastCalendar from './pages/BroadcastCalendar'
 import Flows from './pages/Flows'
 import LiveChat from './pages/LiveChat'
+import TeamActivity from './pages/TeamActivity'
 
 const router = createBrowserRouter([
   {
@@ -83,6 +84,7 @@ const router = createBrowserRouter([
           { path: '/calendar', element: <BroadcastCalendar /> },
           { path: '/flows', element: <Flows /> },
           { path: '/live-chat', element: <LiveChat /> },
+          { path: '/team/activity', element: <TeamActivity /> },
         ],
       },
     ],

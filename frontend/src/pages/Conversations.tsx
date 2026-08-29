@@ -14,6 +14,8 @@ import {
   Zap,
   Star,
   Sparkles,
+  Search,
+  CheckSquare,
 } from 'lucide-react'
 import CannedPicker from '../components/CannedPicker'
 import AiPanel from '../components/AiPanel'
@@ -96,6 +98,8 @@ export default function Conversations() {
   const [error, setError] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [aiOpen, setAiOpen] = useState(false)
+  const [searchQ, setSearchQ] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [csatOpen, setCsatOpen] = useState(false)
   const [csatScore, setCsatScore] = useState(0)
   const [csatComment, setCsatComment] = useState('')
@@ -114,8 +118,9 @@ export default function Conversations() {
   const loadInbox = useCallback(async () => {
     setLoading(true)
     try {
+      const q = searchQ.trim()
       const [c, ct, tm] = await Promise.all([
-        conversationsService.list(),
+        q.length >= 2 ? conversationsService.search(q) : conversationsService.list(),
         contactsService.list(),
         teamService.list(),
       ])
@@ -128,11 +133,37 @@ export default function Conversations() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [searchQ])
 
   useEffect(() => {
-    loadInbox()
+    // Debounce so we don't fire a request on every keystroke.
+    const t = setTimeout(() => { loadInbox() }, searchQ.trim() ? 250 : 0)
+    return () => clearTimeout(t)
   }, [loadInbox])
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
+
+  const clearSelection = () => setSelectedIds(new Set())
+
+  const handleBulkAssign = async (memberID: string, memberName: string) => {
+    if (selectedIds.size === 0) return
+    await conversationsService.bulkAssign(Array.from(selectedIds), memberID, memberName)
+    clearSelection()
+    loadInbox()
+  }
+
+  const handleBulkRead = async () => {
+    if (selectedIds.size === 0) return
+    await conversationsService.bulkMarkRead(Array.from(selectedIds))
+    clearSelection()
+    loadInbox()
+  }
 
   // Live updates via SSE — new inbound/outbound messages refresh the
   // inbox row and, if the affected thread is currently open, append
@@ -326,6 +357,45 @@ export default function Conversations() {
           </button>
         </div>
 
+        {/* Search bar */}
+        <div className="border-b border-gray-100 px-3 py-2 flex items-center gap-2">
+          <Search size={14} className="text-gray-400 shrink-0" />
+          <input
+            value={searchQ}
+            onChange={(e) => setSearchQ(e.target.value)}
+            placeholder="Search name, phone, or message…"
+            className="flex-1 text-sm bg-transparent outline-none placeholder-gray-400"
+          />
+          {searchQ && (
+            <button onClick={() => setSearchQ('')} className="text-xs text-gray-400 hover:text-gray-700" title="Clear">
+              <X size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Bulk-actions toolbar (only when at least one row is selected) */}
+        {selectedIds.size > 0 && (
+          <div className="border-b border-gray-100 bg-primary-50 px-3 py-2 flex items-center gap-2 text-xs">
+            <CheckSquare size={12} className="text-primary-600 shrink-0" />
+            <span className="font-medium text-primary-700">{selectedIds.size} selected</span>
+            <select
+              onChange={(e) => {
+                const m = members.find(m => m.id === e.target.value)
+                if (m) handleBulkAssign(m.user_id || m.id, m.name || m.email)
+                e.currentTarget.selectedIndex = 0
+              }}
+              className="ml-auto rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] cursor-pointer"
+            >
+              <option value="">Assign to…</option>
+              {members.filter(m => m.status === 'active').map(m => (
+                <option key={m.id} value={m.id}>{m.name || m.email}</option>
+              ))}
+            </select>
+            <button onClick={handleBulkRead} className="rounded border border-gray-300 bg-white px-2 py-0.5 hover:bg-gray-50">Mark read</button>
+            <button onClick={clearSelection} className="rounded px-1 py-0.5 text-gray-500 hover:text-gray-700"><X size={12} /></button>
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <p className="p-6 text-center text-sm text-gray-400">Loading…</p>
@@ -340,15 +410,24 @@ export default function Conversations() {
           ) : (
             rows.map((r) => {
               const isActive = selected?.id === r.id
+              const isSelected = selectedIds.has(r.id)
               return (
-                <button
+                <div
                   key={r.id}
                   onClick={() => openThread(r)}
-                  className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors ${
-                    isActive ? 'bg-primary-50' : 'hover:bg-gray-50'
+                  className={`w-full text-left px-4 py-3 border-b border-gray-100 transition-colors cursor-pointer ${
+                    isActive ? 'bg-primary-50' : isSelected ? 'bg-primary-50/40' : 'hover:bg-gray-50'
                   }`}
                 >
                   <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => { e.stopPropagation(); toggleSelect(r.id) }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-2 h-3.5 w-3.5 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                      title="Select for bulk action"
+                    />
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-primary-700 text-xs font-semibold">
                       {initials(r.contact_name, r.contact_phone_number)}
                     </div>
@@ -381,7 +460,7 @@ export default function Conversations() {
                       </div>
                     </div>
                   </div>
-                </button>
+                </div>
               )
             })
           )}

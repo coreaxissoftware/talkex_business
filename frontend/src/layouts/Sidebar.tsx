@@ -75,6 +75,7 @@ const navGroups = [
       { to: '/wallet', icon: Wallet, label: 'Wallet' },
       { to: '/support', icon: HelpCircle, label: 'Support' },
       { to: '/team', icon: UsersRound, label: 'Team' },
+      { to: '/team/activity', icon: UsersRound, label: 'Team Activity' },
       { to: '/settings', icon: Settings, label: 'Settings' },
       { to: '/compliance', icon: ShieldCheck, label: 'Compliance' },
       { to: '/organizations', icon: Building, label: 'Organizations' },
