@@ -1,0 +1,54 @@
+{
+  "app": {
+    "name": "टॉक-एक्स बिज़नेस",
+    "tagline": "एक प्लेटफ़ॉर्म। हर मैसेजिंग चैनल।"
+  },
+  "nav": {
+    "dashboard": "डैशबोर्ड",
+    "channels": "चैनल",
+    "contacts": "कॉन्टैक्ट्स",
+    "conversations": "बातचीत",
+    "campaigns": "कैंपेन",
+    "templates": "टेम्पलेट",
+    "flows": "चैटबॉट फ़्लो",
+    "automation": "ऑटोमेशन",
+    "analytics": "एनालिटिक्स",
+    "wallet": "वॉलेट",
+    "billing": "बिलिंग",
+    "settings": "सेटिंग्स",
+    "team": "टीम",
+    "team_activity": "टीम गतिविधि",
+    "live_chat": "लाइव चैट विजेट",
+    "developers": "डेवलपर्स",
+    "webhooks": "वेबहुक",
+    "logs": "ऑडिट लॉग",
+    "support": "सहायता"
+  },
+  "common": {
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "delete": "हटाएँ",
+    "edit": "संपादित करें",
+    "create": "बनाएँ",
+    "search": "खोजें",
+    "loading": "लोड हो रहा है…",
+    "confirm": "पुष्टि करें",
+    "back": "वापस",
+    "close": "बंद करें",
+    "refresh": "रीफ़्रेश"
+  },
+  "auth": {
+    "login": "साइन इन",
+    "logout": "साइन आउट",
+    "register": "अकाउंट बनाएँ",
+    "email": "ईमेल",
+    "password": "पासवर्ड",
+    "forgot_password": "पासवर्ड भूल गए?",
+    "sign_up_cta": "अकाउंट नहीं है?"
+  },
+  "language": {
+    "label": "भाषा",
+    "english": "English",
+    "hindi": "हिन्दी"
+  }
+}

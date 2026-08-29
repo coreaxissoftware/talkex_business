@@ -1,0 +1,54 @@
+{
+  "app": {
+    "name": "TalkEx Business",
+    "tagline": "One Platform. Every Messaging Channel."
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "channels": "Channels",
+    "contacts": "Contacts",
+    "conversations": "Conversations",
+    "campaigns": "Campaigns",
+    "templates": "Templates",
+    "flows": "Chatbot Flows",
+    "automation": "Automation",
+    "analytics": "Analytics",
+    "wallet": "Wallet",
+    "billing": "Billing",
+    "settings": "Settings",
+    "team": "Team",
+    "team_activity": "Team Activity",
+    "live_chat": "Live Chat Widget",
+    "developers": "Developers",
+    "webhooks": "Webhooks",
+    "logs": "Audit Logs",
+    "support": "Support"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "search": "Search",
+    "loading": "Loading…",
+    "confirm": "Confirm",
+    "back": "Back",
+    "close": "Close",
+    "refresh": "Refresh"
+  },
+  "auth": {
+    "login": "Sign in",
+    "logout": "Log out",
+    "register": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "forgot_password": "Forgot password?",
+    "sign_up_cta": "Don't have an account?"
+  },
+  "language": {
+    "label": "Language",
+    "english": "English",
+    "hindi": "हिन्दी"
+  }
+}

@@ -7,6 +7,7 @@
 package otp
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/subtle"
 	"errors"
@@ -15,6 +16,10 @@ import (
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/redis/go-redis/v9"
+
+	"github.com/coreaxissoftware/talkex_business/internal/redisclient"
 )
 
 const (
@@ -84,6 +89,17 @@ func Send(phone, email string) error {
 	}
 	k := key(phone, email)
 
+	code, err := generateCode()
+	if err != nil {
+		return err
+	}
+
+	// Redis-backed path — shared across pods.
+	if rdb := redisclient.Get(); rdb != nil {
+		return sendRedis(rdb, k, code, phone, email)
+	}
+
+	// In-memory fallback (dev, single pod).
 	store := defaultStore
 	store.mu.Lock()
 	defer store.mu.Unlock()
@@ -95,11 +111,6 @@ func Send(phone, email string) error {
 		}
 	}
 
-	code, err := generateCode()
-	if err != nil {
-		return err
-	}
-
 	store.entries[k] = &entry{
 		Code:      code,
 		ExpiresAt: time.Now().Add(codeTTL),
@@ -107,23 +118,58 @@ func Send(phone, email string) error {
 		SentAt:    time.Now(),
 	}
 
-	// Dev-mode: log the OTP to console (same pattern as password reset)
+	logDelivery(phone, email, code)
+	return nil
+}
+
+func logDelivery(phone, email, code string) {
 	target := phone
 	if target == "" {
 		target = email
 	}
 	log.Printf("OTP (dev): %s → %s", target, code)
+	// Production TODO: call SMS gateway (phone) or email provider (email).
+}
 
-	// Production TODO: call SMS gateway (phone) or email provider (email)
-	// to actually deliver the code. The gateway selection would be based
-	// on config.Get().Environment != "development".
+// sendRedis stores the code in Redis using a HASH with (code, attempts,
+// sent_at) and a codeTTL expiry. The 30s send-cooldown is enforced by
+// checking sent_at before overwriting.
+func sendRedis(rdb *redis.Client, k, code, phone, email string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
 
+	rk := "otp:" + k
+	sentAt, err := rdb.HGet(ctx, rk, "sent_at").Result()
+	if err == nil && sentAt != "" {
+		if ts, perr := time.Parse(time.RFC3339Nano, sentAt); perr == nil {
+			if time.Since(ts) < 30*time.Second {
+				return ErrRateLimited
+			}
+		}
+	}
+
+	now := time.Now()
+	pipe := rdb.TxPipeline()
+	pipe.HSet(ctx, rk,
+		"code", code,
+		"attempts", "0",
+		"sent_at", now.Format(time.RFC3339Nano),
+	)
+	pipe.Expire(ctx, rk, codeTTL)
+	if _, err := pipe.Exec(ctx); err != nil {
+		return err
+	}
+	logDelivery(phone, email, code)
 	return nil
 }
 
 // Verify checks the submitted OTP code against the stored one.
 func Verify(phone, email, code string) error {
 	k := key(phone, email)
+
+	if rdb := redisclient.Get(); rdb != nil {
+		return verifyRedis(rdb, k, code)
+	}
 
 	store := defaultStore
 	store.mu.Lock()
@@ -150,6 +196,36 @@ func Verify(phone, email, code string) error {
 
 	// OTP verified — remove it so it can't be reused
 	delete(store.entries, k)
+	return nil
+}
+
+func verifyRedis(rdb *redis.Client, k, code string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	rk := "otp:" + k
+	// Atomic attempt increment; TTL survives from Send() so an expired
+	// entry returns 0 and we treat it as invalid.
+	attempts, err := rdb.HIncrBy(ctx, rk, "attempts", 1).Result()
+	if err != nil {
+		return ErrInvalidCode
+	}
+	if attempts == 1 {
+		// This is the first attempt; keep the TTL as-is. If the key
+		// didn't exist HIncrBy created it and we treat as invalid.
+	}
+	stored, err := rdb.HGet(ctx, rk, "code").Result()
+	if err != nil || stored == "" {
+		return ErrInvalidCode
+	}
+	if attempts > int64(maxAttempts) {
+		rdb.Del(ctx, rk)
+		return ErrTooManyAttempts
+	}
+	if subtle.ConstantTimeCompare([]byte(stored), []byte(code)) != 1 {
+		return ErrInvalidCode
+	}
+	rdb.Del(ctx, rk)
 	return nil
 }
 

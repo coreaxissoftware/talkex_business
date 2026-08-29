@@ -861,6 +861,27 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Language */}
+        <div className="mt-6 pt-6 border-t border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Language</h3>
+          <div className="flex items-center gap-2">
+            <label className="block text-xs font-medium text-gray-700">Interface language</label>
+            <select
+              value={notifPrefs.language || 'en'}
+              onChange={e => {
+                const lang = e.target.value
+                setNotifPrefs(prev => ({ ...prev, language: lang }))
+                // Live switch — no page reload needed
+                import('../i18n').then(m => m.setLanguage(lang as 'en' | 'hi'))
+              }}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 cursor-pointer"
+            >
+              <option value="en">English</option>
+              <option value="hi">हिन्दी</option>
+            </select>
+          </div>
+        </div>
+
         {/* AI Auto-tag */}
         <div className="mt-6 pt-6 border-t border-gray-100">
           <h3 className="text-sm font-semibold text-gray-900 mb-3">AI features</h3>

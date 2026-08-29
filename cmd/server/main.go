@@ -43,6 +43,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/sla"
 	"github.com/coreaxissoftware/talkex_business/internal/otp"
 	"github.com/coreaxissoftware/talkex_business/internal/payments"
+	"github.com/coreaxissoftware/talkex_business/internal/redisclient"
 
 	// Channel connectors — imported for side-effect init() registration
 	_ "github.com/coreaxissoftware/talkex_business/internal/channels/email"
@@ -75,6 +76,11 @@ func main() {
 	if err := database.Connect(cfg.DatabaseURL, cfg.IsDev()); err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
+
+	// Redis — optional. When REDIS_URL is set the rate limiter,
+	// OTP store, and SSE hub switch to shared backends so multiple
+	// API pods see the same state. Nil client = in-memory fallback.
+	redisclient.Init(cfg.RedisURL)
 
 	// Auto-migrate all domain models
 	if err := database.AutoMigrate(
@@ -181,6 +187,7 @@ func main() {
 	flows.RegisterRoutes(r)
 	ai.RegisterRoutes(r)
 	events.RegisterRoutes(r)
+	events.StartRedisFanout() // no-op when Redis is not configured
 	widget.RegisterRoutes(r)
 	metrics.RegisterRoutes(r)
 	channels.RegisterWebhookRoutes(r)

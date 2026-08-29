@@ -41,6 +41,11 @@ type Config struct {
 	RazorpayKeyID         string
 	RazorpaySecret        string
 	RazorpayWebhookSecret string
+
+	// Redis — when set, rate limiter / SSE hub / OTP store switch to
+	// Redis so multiple API pods share state. Unset = in-memory (dev
+	// or single-pod deploys).
+	RedisURL string
 }
 
 var (
@@ -73,6 +78,8 @@ func Get() *Config {
 			RazorpayKeyID:         envOr("RAZORPAY_KEY_ID", ""),
 			RazorpaySecret:        envOr("RAZORPAY_SECRET", ""),
 			RazorpayWebhookSecret: envOr("RAZORPAY_WEBHOOK_SECRET", ""),
+
+			RedisURL: envOr("REDIS_URL", ""),
 		}
 
 		// Fail loud in non-dev environments if the JWT secret was left at
