@@ -18,7 +18,29 @@ func RegisterRoutes(r *gin.Engine) {
 		g.GET("/:id", handleGet)
 		g.PATCH("/:id", handleUpdate)
 		g.DELETE("/:id", handleDelete)
+		g.POST("/:id/submit", handleSubmitToMeta)
 	}
+}
+
+// handleSubmitToMeta pushes a WhatsApp template to Meta for approval.
+// In dev (no META_WHATSAPP_TOKEN) we mark it pending_review locally and
+// log the payload. In production, POST to graph.facebook.com/<wabaID>/
+// message_templates and record the returned id as ExternalRef.
+func handleSubmitToMeta(c *gin.Context) {
+	tpl := getOwnedOrAbort(c)
+	if tpl == nil {
+		return
+	}
+	if tpl.Channel != "whatsapp" {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "Only WhatsApp templates need Meta approval"})
+		return
+	}
+	updated, err := SubmitToMeta(database.DB, tpl)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"detail": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
 }
 
 func handleList(c *gin.Context) {
