@@ -182,6 +182,28 @@ export default function Contacts() {
     }
   }
 
+  // ---- merge (fold a duplicate into a keeper) --------------------
+  const [mergeSourceId, setMergeSourceId] = useState<string | null>(null)
+  const [mergeTargetId, setMergeTargetId] = useState('')
+  const [merging, setMerging] = useState(false)
+
+  const mergeCandidates = contacts.filter(c => c.id !== mergeSourceId)
+
+  const handleMerge = async () => {
+    if (!mergeSourceId || !mergeTargetId) return
+    setMerging(true)
+    try {
+      // keep = target (the one you're merging INTO), dup = source (goes away)
+      await contactsService.merge(mergeTargetId, mergeSourceId)
+      setMergeSourceId(null); setMergeTargetId('')
+      await load()
+    } catch {
+      setError('Merge failed')
+    } finally {
+      setMerging(false)
+    }
+  }
+
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -398,6 +420,13 @@ export default function Contacts() {
                                 <Pencil size={14} />
                               </button>
                               <button
+                                onClick={() => { setMergeSourceId(c.id); setMergeTargetId('') }}
+                                className="rounded-lg p-1.5 text-gray-400 hover:bg-primary-50 hover:text-primary-600 transition-colors"
+                                title="Merge into another contact"
+                              >
+                                🔀
+                              </button>
+                              <button
                                 onClick={() => setConfirmDeleteId(c.id)}
                                 className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                                 title="Delete"
@@ -576,6 +605,46 @@ export default function Contacts() {
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Merge modal */}
+      {mergeSourceId && (
+        <Modal open={true} onClose={() => setMergeSourceId(null)} title="Merge contact">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Merging <b>{contacts.find(c => c.id === mergeSourceId)?.name || contacts.find(c => c.id === mergeSourceId)?.phone_number}</b> INTO another contact.
+              This moves all conversations and unions tags. The source contact is deleted.
+            </p>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Keep this contact (target)</label>
+              <select
+                value={mergeTargetId}
+                onChange={e => setMergeTargetId(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+              >
+                <option value="">Select target contact…</option>
+                {mergeCandidates.map(c => (
+                  <option key={c.id} value={c.id}>{c.name || c.phone_number} ({c.phone_number})</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={() => setMergeSourceId(null)}
+                className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMerge}
+                disabled={!mergeTargetId || merging}
+                className="flex-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50"
+              >
+                {merging ? 'Merging…' : 'Merge'}
               </button>
             </div>
           </div>

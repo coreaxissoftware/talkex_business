@@ -24,4 +24,9 @@ export const templatesService = {
   async remove(id: string): Promise<void> {
     await api.delete(`/templates/${id}`)
   },
+
+  async submitToMeta(id: string): Promise<MessageTemplate> {
+    const res = await api.post(`/templates/${id}/submit`)
+    return res.data
+  },
 }

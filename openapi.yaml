@@ -1,0 +1,278 @@
+# TalkEx Business - OpenAPI 3.0 spec
+# Minimal reference covering the major endpoints; the full interactive
+# doc is generated in-app at /api-docs. Regenerate this file when
+# adding new endpoints so external SDK generators stay current.
+openapi: 3.0.3
+info:
+  title: TalkEx Business API
+  version: 1.0.0
+  description: |
+    CPaaS API - authentication, channels, contacts, templates, campaigns,
+    conversations, webhooks, analytics, wallet, and admin.
+    All endpoints under /users, /contacts, /templates, /campaigns,
+    /conversations, /wallet, /webhooks, /automation, /analytics, /media,
+    /team, /csat, /canned-responses, /ai, /flows, /widget (admin),
+    /settings, /payments require Bearer authentication (JWT or API key).
+servers:
+  - url: http://localhost:8080
+    description: Local dev
+  - url: https://api.talkex.io
+    description: Production
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      security: []
+      responses:
+        "200": { description: OK }
+
+  /metrics:
+    get:
+      summary: Prometheus scrape endpoint
+      security: []
+      responses:
+        "200": { description: text/plain metrics }
+
+  /auth/register:
+    post:
+      summary: Create a new tenant account
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, full_name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                full_name: { type: string }
+      responses:
+        "201": { description: Created }
+        "409": { description: Email already registered }
+
+  /auth/login:
+    post:
+      summary: Exchange credentials for access + refresh tokens
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token: { type: string }
+                  refresh_token: { type: string }
+                  token_type: { type: string }
+
+  /auth/refresh:
+    post:
+      summary: Rotate access token using refresh token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { refresh_token: { type: string } } }
+      responses: { "200": { description: OK } }
+
+  /auth/otp/send:
+    post:
+      summary: Send a one-time password to phone or email
+      security: []
+      responses:
+        "200": { description: sent }
+        "429": { description: rate-limited }
+
+  /auth/otp/verify:
+    post:
+      summary: Verify an OTP code
+      security: []
+      responses: { "200": { description: verified } }
+
+  /auth/oauth/{provider}:
+    get:
+      summary: Start OAuth (google | facebook | github | apple)
+      security: []
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "307": { description: redirect } }
+
+  /users/me:
+    get:
+      summary: Current user profile
+      responses: { "200": { description: OK } }
+
+  /contacts:
+    get:
+      summary: List contacts (search+pagination via query params)
+      responses: { "200": { description: OK } }
+    post:
+      summary: Create contact
+      responses: { "201": { description: Created } }
+  /contacts/{id}:
+    get:
+      summary: Get contact by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+    patch:
+      summary: Update contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+    delete:
+      summary: Delete contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "204": { description: No Content } }
+  /contacts/merge:
+    post:
+      summary: Merge duplicate into keep contact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [keep_id, dup_id]
+              properties:
+                keep_id: { type: string }
+                dup_id:  { type: string }
+      responses: { "200": { description: merged } }
+
+  /conversations:
+    get:
+      summary: List inbox
+      responses: { "200": { description: OK } }
+  /conversations/search:
+    get:
+      summary: Search conversations
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+  /conversations/bulk-assign:
+    post:
+      summary: Bulk assign conversations
+      responses: { "200": { description: OK } }
+  /conversations/bulk-read:
+    post:
+      summary: Bulk mark conversations read
+      responses: { "200": { description: OK } }
+  /conversations/send:
+    post:
+      summary: Send an outbound message
+      responses: { "201": { description: sent } }
+
+  /campaigns:
+    get: { summary: List campaigns, responses: { "200": { description: OK } } }
+    post: { summary: Create campaign, responses: { "201": { description: Created } } }
+  /campaigns/{id}/launch:
+    post:
+      summary: Launch a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: launched } }
+  /campaigns/{id}/clone:
+    post:
+      summary: Clone a campaign
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "201": { description: Cloned } }
+
+  /templates:
+    get: { summary: List templates, responses: { "200": { description: OK } } }
+    post: { summary: Create template, responses: { "201": { description: Created } } }
+  /templates/{id}/submit:
+    post:
+      summary: Submit WhatsApp template to Meta for approval
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: submitted } }
+
+  /ai/suggest-reply: { post: { summary: Suggest a reply, responses: { "200": { description: OK } } } }
+  /ai/summarize:     { post: { summary: Summarize a thread, responses: { "200": { description: OK } } } }
+  /ai/sentiment:     { post: { summary: Classify inbound sentiment, responses: { "200": { description: OK } } } }
+
+  /flows:
+    get:  { summary: List chatbot flows, responses: { "200": { description: OK } } }
+    post: { summary: Create flow, responses: { "201": { description: Created } } }
+  /flows/{id}/test:
+    post:
+      summary: Manually trigger a flow for a contact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: OK } }
+
+  /widget/init:      { post: { summary: Start a chat-widget visitor session, security: [], responses: { "201": { description: session_id } } } }
+  /widget/message:   { post: { summary: Send widget message, security: [], responses: { "200": { description: OK } } } }
+  /widget/stream:    { get:  { summary: SSE stream of agent replies, security: [], responses: { "200": { description: SSE } } } }
+
+  /payments/order:      { post: { summary: Create wallet top-up order, responses: { "201": { description: Created } } } }
+  /payments/webhook:    { post: { summary: Razorpay webhook, security: [], responses: { "200": { description: OK } } } }
+  /payments/dev-simulate: { post: { summary: Dev-mode - mark order paid, responses: { "200": { description: OK } } } }
+
+  /events/stream:
+    get:
+      summary: Server-Sent Events for real-time updates
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema: { type: string }
+      responses: { "200": { description: SSE } }
+
+  /team/activity: { get: { summary: Per-agent workload stats, responses: { "200": { description: OK } } } }
+
+  /settings:
+    get: { summary: Get preferences, responses: { "200": { description: OK } } }
+    put: { summary: Save preferences, responses: { "200": { description: OK } } }

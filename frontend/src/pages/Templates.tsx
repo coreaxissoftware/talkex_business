@@ -150,6 +150,16 @@ export default function Templates() {
     }
   }
 
+  const handleSubmitToMeta = async (id: string) => {
+    if (!confirm('Submit this template to Meta for approval? You cannot edit it again until Meta responds.')) return
+    try {
+      const updated = await templatesService.submitToMeta(id)
+      setTemplates(prev => prev.map(t => t.id === id ? updated : t))
+    } catch (err: any) {
+      alert('Submission failed: ' + (err.response?.data?.detail || err.message))
+    }
+  }
+
   const handleDelete = async (id: string) => {
     try {
       await templatesService.remove(id)
@@ -271,6 +281,15 @@ export default function Templates() {
                     </>
                   ) : (
                     <>
+                      {t.channel === 'whatsapp' && t.status === 'draft' && (
+                        <button
+                          onClick={() => handleSubmitToMeta(t.id)}
+                          className="rounded-lg px-2 py-1 text-[10px] font-semibold text-white bg-green-600 hover:bg-green-700"
+                          title="Submit to Meta for WhatsApp approval"
+                        >
+                          Submit
+                        </button>
+                      )}
                       <button
                         onClick={() => openEdit(t)}
                         className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"

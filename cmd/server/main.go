@@ -39,6 +39,8 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/flows"
 	"github.com/coreaxissoftware/talkex_business/internal/media"
 	"github.com/coreaxissoftware/talkex_business/internal/messaging"
+	"github.com/coreaxissoftware/talkex_business/internal/metrics"
+	"github.com/coreaxissoftware/talkex_business/internal/sla"
 	"github.com/coreaxissoftware/talkex_business/internal/otp"
 	"github.com/coreaxissoftware/talkex_business/internal/payments"
 
@@ -129,6 +131,7 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.Recovery())
 	r.Use(middleware.CORS())
+	r.Use(metrics.Middleware())
 	r.Use(gin.Logger())
 	r.Use(audit.Middleware())
 	r.Use(middleware.RateLimit(middleware.DefaultRateLimiterConfig()))
@@ -179,6 +182,7 @@ func main() {
 	ai.RegisterRoutes(r)
 	events.RegisterRoutes(r)
 	widget.RegisterRoutes(r)
+	metrics.RegisterRoutes(r)
 	channels.RegisterWebhookRoutes(r)
 
 	// Wire payments → wallet credit. Uses paymentID as idempotency key
@@ -602,6 +606,26 @@ func main() {
 
 	// Background flow sweeper — advances waiting steps every 30s
 	flows.StartSweeper(database.DB, 30*time.Second)
+
+	// SLA breach alerts — check every minute, fires notification +
+	// webhook per breach with 12h re-alert cooldown.
+	sla.RegisterPrefsFetcher(func(ownerID string) int {
+		_, prefs, err := settings.Get(database.DB, ownerID)
+		if err != nil {
+			return 0
+		}
+		return prefs.SLAFirstResponseMins
+	})
+	sla.RegisterNotifier(func(ownerID, title, body, link string) {
+		notifications.Emit(database.DB, notifications.EmitInput{
+			OwnerID: ownerID, Type: notifications.TypeWarning,
+			Title: title, Body: body, Link: link,
+		})
+	})
+	sla.RegisterWebhook(func(ownerID, event string, payload interface{}) {
+		webhooks.Deliver(database.DB, ownerID, event, payload)
+	})
+	sla.Start(database.DB, 1*time.Minute)
 
 	// OTP reaper — expires abandoned in-memory entries so the store
 	// doesn't grow unbounded across dropped signups.

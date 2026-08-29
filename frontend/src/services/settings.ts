@@ -27,6 +27,15 @@ export interface UserPrefs {
   sell_rcs: number
   sell_instagram: number
   sell_messenger: number
+
+  // Business hours + away message + SLA + AI auto-tag
+  business_hours_enabled: boolean
+  business_days: number[]
+  business_open_time: string
+  business_close_time: string
+  away_message: string
+  sla_first_response_mins: number
+  ai_auto_tag_enabled: boolean
 }
 
 export const settingsService = {

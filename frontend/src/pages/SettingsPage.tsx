@@ -111,6 +111,13 @@ export default function SettingsPage() {
     sell_rcs: 0,
     sell_instagram: 0,
     sell_messenger: 0,
+    business_hours_enabled: false,
+    business_days: [1, 2, 3, 4, 5],
+    business_open_time: '09:00',
+    business_close_time: '18:00',
+    away_message: 'Thanks for your message! We are currently offline. We\'ll get back to you during business hours.',
+    sla_first_response_mins: 0,
+    ai_auto_tag_enabled: false,
   })
   const [notifSaving, setNotifSaving] = useState(false)
   const [notifSaved, setNotifSaved] = useState(false)
@@ -754,6 +761,121 @@ export default function SettingsPage() {
             ))}
           </div>
           <p className="text-[11px] text-gray-400 mt-2">Set per-message cost and sell price for margin tracking. Leave at 0 to disable.</p>
+        </div>
+
+        {/* Business Hours */}
+        <div className="mt-6 pt-6 border-t border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Business Hours & Auto-Reply</h3>
+          <label className="flex items-center justify-between py-2 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Enable business hours</p>
+              <p className="text-xs text-gray-500">Auto-reply with your away message when a customer messages outside hours.</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={notifPrefs.business_hours_enabled}
+              onChange={e => setNotifPrefs(prev => ({ ...prev, business_hours_enabled: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+          </label>
+          {notifPrefs.business_hours_enabled && (
+            <div className="ml-0 mt-3 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Working days</label>
+                <div className="flex gap-1 flex-wrap">
+                  {[
+                    { d: 1, label: 'Mon' }, { d: 2, label: 'Tue' }, { d: 3, label: 'Wed' },
+                    { d: 4, label: 'Thu' }, { d: 5, label: 'Fri' }, { d: 6, label: 'Sat' },
+                    { d: 7, label: 'Sun' },
+                  ].map(({ d, label }) => {
+                    const on = notifPrefs.business_days.includes(d)
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setNotifPrefs(prev => ({
+                          ...prev,
+                          business_days: on
+                            ? prev.business_days.filter(x => x !== d)
+                            : [...prev.business_days, d].sort(),
+                        }))}
+                        className={`rounded-lg border px-3 py-1 text-xs font-medium ${
+                          on
+                            ? 'border-primary-500 bg-primary-50 text-primary-700'
+                            : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Open</label>
+                  <input
+                    type="time"
+                    value={notifPrefs.business_open_time}
+                    onChange={e => setNotifPrefs(prev => ({ ...prev, business_open_time: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5">Close</label>
+                  <input
+                    type="time"
+                    value={notifPrefs.business_close_time}
+                    onChange={e => setNotifPrefs(prev => ({ ...prev, business_close_time: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1.5">Away message</label>
+                <textarea
+                  rows={3}
+                  value={notifPrefs.away_message}
+                  onChange={e => setNotifPrefs(prev => ({ ...prev, away_message: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                />
+                <p className="text-[11px] text-gray-400 mt-1">Sent once per contact per 24h so a chatty visitor isn't spammed.</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* SLA */}
+        <div className="mt-6 pt-6 border-t border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">SLA policy</h3>
+          <label className="block text-xs font-medium text-gray-700 mb-1.5">First-response threshold (minutes)</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min="0"
+              value={notifPrefs.sla_first_response_mins}
+              onChange={e => setNotifPrefs(prev => ({ ...prev, sla_first_response_mins: parseInt(e.target.value) || 0 }))}
+              className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500"
+            />
+            <span className="text-xs text-gray-500">0 = disabled. Alerts fire when a conversation goes unanswered past this window.</span>
+          </div>
+        </div>
+
+        {/* AI Auto-tag */}
+        <div className="mt-6 pt-6 border-t border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">AI features</h3>
+          <label className="flex items-center justify-between py-2 cursor-pointer">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Auto-tag inbound with sentiment</p>
+              <p className="text-xs text-gray-500">Runs Claude on every inbound and stamps `sentiment:positive/neutral/negative` on the conversation labels. Needs ANTHROPIC_API_KEY for real classification; dev heuristic otherwise.</p>
+            </div>
+            <input
+              type="checkbox"
+              checked={notifPrefs.ai_auto_tag_enabled}
+              onChange={e => setNotifPrefs(prev => ({ ...prev, ai_auto_tag_enabled: e.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            />
+          </label>
         </div>
 
         <button

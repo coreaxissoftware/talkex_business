@@ -1,0 +1,70 @@
+# One-command dev environment for TalkEx Business.
+#   docker compose up
+# Backend on :8080, frontend on :5173, Postgres on :5432, Redis on :6379.
+#
+# Backend reads DATABASE_URL from env — swap the sqlite:// fallback for
+# postgres so both services agree. Frontend hits the backend at
+# http://localhost:8080 (VITE_API_URL).
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: talkex
+      POSTGRES_PASSWORD: talkex_dev
+      POSTGRES_DB: talkex_business
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U talkex -d talkex_business"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "postgres://talkex:talkex_dev@postgres:5432/talkex_business?sslmode=disable"
+      JWT_SECRET: "${JWT_SECRET:-dev-only-secret-swap-in-prod-min-32-chars}"
+      ENVIRONMENT: development
+      CORS_ORIGINS: "http://localhost:5173"
+      PORT: "8080"
+      REDIS_URL: "redis://redis:6379"
+      # Optional provider credentials (leave empty for dev-mode fallback)
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
+      RAZORPAY_KEY_ID: "${RAZORPAY_KEY_ID:-}"
+      RAZORPAY_SECRET: "${RAZORPAY_SECRET:-}"
+      RAZORPAY_WEBHOOK_SECRET: "${RAZORPAY_WEBHOOK_SECRET:-}"
+      META_WHATSAPP_TOKEN: "${META_WHATSAPP_TOKEN:-}"
+      META_WHATSAPP_WABA_ID: "${META_WHATSAPP_WABA_ID:-}"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./uploads:/app/uploads
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_URL: "http://localhost:8080"
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres_data:
