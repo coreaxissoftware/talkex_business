@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	"github.com/coreaxissoftware/talkex_business/internal/ai"
 	"github.com/coreaxissoftware/talkex_business/internal/analytics"
@@ -58,6 +59,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/users"
 	"github.com/coreaxissoftware/talkex_business/internal/wallet"
 	"github.com/coreaxissoftware/talkex_business/internal/webhooks"
+	"github.com/coreaxissoftware/talkex_business/internal/widget"
 )
 
 func main() {
@@ -110,6 +112,8 @@ func main() {
 		&payments.Order{},
 		&flows.Flow{},
 		&flows.RunState{},
+		&widget.Config{},
+		&widget.Session{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -170,6 +174,7 @@ func main() {
 	flows.RegisterRoutes(r)
 	ai.RegisterRoutes(r)
 	events.RegisterRoutes(r)
+	widget.RegisterRoutes(r)
 	channels.RegisterWebhookRoutes(r)
 
 	// Wire payments → wallet credit. Uses paymentID as idempotency key
@@ -528,6 +533,119 @@ func main() {
 	// OTP reaper — expires abandoned in-memory entries so the store
 	// doesn't grow unbounded across dropped signups.
 	otp.StartCleanup(5 * time.Minute)
+
+	// -------------------------------------------------------------
+	// Widget wires — a live-chat visitor becomes a Contact of channel
+	// "webchat", the same conversations.RecordInbound path fires the
+	// existing hooks, and outbound agent replies stream back via the
+	// events hub filtered on conversation ID.
+	// -------------------------------------------------------------
+	widget.RegisterContactCreator(func(ownerID, name, email string) (string, error) {
+		// A widget contact needs a unique "phone number" — reuse the
+		// Contact model by giving each session a synthetic web:<uuid>
+		// identifier scoped by our unique index on (owner_id, phone).
+		phone := "web:" + uuid.New().String()
+		in := &contacts.CreateInput{
+			PhoneNumber: phone,
+			Name:        &name,
+			Tags:        []string{"webchat"},
+		}
+		if email != "" {
+			in.Email = &email
+		}
+		c, err := contacts.Create(database.DB, ownerID, in)
+		if err != nil {
+			return "", err
+		}
+		return c.ID, nil
+	})
+	widget.RegisterInboundRecorder(func(ownerID, contactID, body string) error {
+		_, _, err := conversations.RecordInbound(database.DB, ownerID, &conversations.InboundInput{
+			ContactID: contactID,
+			Channel:   "webchat",
+			Body:      body,
+		})
+		return err
+	})
+	widget.RegisterConvLookup(func(ownerID, contactID string) (string, error) {
+		var conv conversations.Conversation
+		err := database.DB.Where("owner_id = ? AND contact_id = ? AND channel = ?",
+			ownerID, contactID, "webchat").
+			Order("last_message_at DESC").First(&conv).Error
+		if err != nil {
+			return "", err
+		}
+		return conv.ID, nil
+	})
+	widget.RegisterMessageLister(func(conversationID string) ([]widget.OutboundMsg, error) {
+		msgs, err := conversations.ListMessages(database.DB, conversationID)
+		if err != nil {
+			return nil, err
+		}
+		out := make([]widget.OutboundMsg, len(msgs))
+		for i, m := range msgs {
+			out[i] = widget.OutboundMsg{
+				ID:        m.ID,
+				Direction: m.Direction,
+				Body:      m.Body,
+				CreatedAt: m.CreatedAt,
+			}
+		}
+		return out, nil
+	})
+	// Streamer bridges the owner-scoped events hub to a per-conversation
+	// channel that the widget's SSE handler drains.
+	widget.RegisterOutboundStreamer(func(conversationID string) (<-chan widget.OutboundMsg, func()) {
+		// Resolve owner ID once — we need it to subscribe.
+		var conv conversations.Conversation
+		if err := database.DB.Where("id = ?", conversationID).First(&conv).Error; err != nil {
+			ch := make(chan widget.OutboundMsg)
+			close(ch)
+			return ch, func() {}
+		}
+		out := make(chan widget.OutboundMsg, 8)
+		sub := events.Subscribe(conv.OwnerID)
+		done := make(chan struct{})
+		go func() {
+			defer close(out)
+			for {
+				select {
+				case <-done:
+					return
+				case ev, ok := <-sub.Channel():
+					if !ok {
+						return
+					}
+					if ev.Type != events.TypeMessageOutbound && ev.Type != events.TypeMessageInbound {
+						continue
+					}
+					payload, _ := ev.Data.(map[string]interface{})
+					if payload == nil {
+						continue
+					}
+					msg, _ := payload["message"].(*conversations.Message)
+					c2, _ := payload["conversation"].(*conversations.Conversation)
+					if msg == nil || c2 == nil || c2.ID != conversationID {
+						continue
+					}
+					select {
+					case out <- widget.OutboundMsg{
+						ID:        msg.ID,
+						Direction: msg.Direction,
+						Body:      msg.Body,
+						CreatedAt: msg.CreatedAt,
+					}:
+					default:
+					}
+				}
+			}
+		}()
+		cancel := func() {
+			close(done)
+			events.Unsubscribe(sub)
+		}
+		return out, cancel
+	})
 
 	// CSAT ownership resolver — canonicalizes contact_id + channel
 	// and rejects submissions for conversations the caller doesn't own.

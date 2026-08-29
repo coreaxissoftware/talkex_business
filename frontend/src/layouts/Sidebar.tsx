@@ -60,6 +60,7 @@ const navGroups = [
     items: [
       { to: '/automation', icon: Workflow, label: 'Automation' },
       { to: '/flows', icon: Workflow, label: 'Chatbot Flows' },
+      { to: '/live-chat', icon: Workflow, label: 'Live Chat Widget' },
       { to: '/developers', icon: Code2, label: 'Developers' },
       { to: '/api-docs', icon: Book, label: 'API Docs' },
       { to: '/webhooks', icon: Webhook, label: 'Webhooks' },

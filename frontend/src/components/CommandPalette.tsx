@@ -44,6 +44,7 @@ const PAGES = [
   { path: '/conversations', label: 'Conversations', icon: MessageSquare, keywords: 'inbox chat messages' },
   { path: '/automation', label: 'Automation', icon: Workflow, keywords: 'rules triggers auto-reply' },
   { path: '/flows', label: 'Chatbot Flows', icon: Workflow, keywords: 'flow builder chatbot conversation steps' },
+  { path: '/live-chat', label: 'Live Chat Widget', icon: Workflow, keywords: 'website widget embed snippet visitor' },
   { path: '/developers', label: 'Developers', icon: Code2, keywords: 'api keys playground' },
   { path: '/api-docs', label: 'API Documentation', icon: Book, keywords: 'reference endpoints' },
   { path: '/webhooks', label: 'Webhooks', icon: Webhook, keywords: 'events callbacks' },
