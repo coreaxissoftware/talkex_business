@@ -179,7 +179,10 @@ func handleReject(c *gin.Context) {
 	var req struct {
 		Reason string `json:"reason"`
 	}
-	c.ShouldBindJSON(&req)
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
 	updated, err := Reject(database.DB, camp, auth.GetUserID(c), req.Reason)
 	if err == ErrInvalidStatus {
 		c.JSON(http.StatusConflict, gin.H{"detail": "Campaign is not pending approval"})

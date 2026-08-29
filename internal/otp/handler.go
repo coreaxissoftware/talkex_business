@@ -4,13 +4,25 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 )
 
 // RegisterRoutes adds OTP endpoints under /auth/otp.
+// /send gets a dedicated stricter per-IP limiter — the service-level
+// 30s cooldown is per-target (phone/email) so a scripted list of 60
+// unique numbers/min would sneak past it and hit our SMS gateway.
+// At ~5 sends per IP per 5 min a legitimate user can retry after a
+// typo, but a bot can't enumerate numbers to burn our gateway budget.
 func RegisterRoutes(r *gin.Engine) {
+	strict := middleware.RateLimit(middleware.RateLimiterConfig{
+		Rate:  1.0 / 60.0, // one token per minute
+		Burst: 5,
+		KeyFunc: func(c *gin.Context) string { return c.ClientIP() },
+	})
 	g := r.Group("/auth/otp")
 	{
-		g.POST("/send", handleSend)
+		g.POST("/send", strict, handleSend)
 		g.POST("/verify", handleVerify)
 	}
 }

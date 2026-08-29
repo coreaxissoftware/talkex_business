@@ -33,6 +33,11 @@ func client() *anthropic.Client {
 	return sharedClient
 }
 
+// callTimeout is the maximum wall-clock a single AI request may run.
+// Wraps the caller's ctx so a hung upstream cannot tie up a goroutine
+// (and paid inference minutes) for the SDK's 10-minute default.
+const callTimeout = 30 * time.Second
+
 // Model is the Claude model used for every AI call. Opus 5 is the
 // default per the claude-api skill guidance; users can override via
 // ANTHROPIC_MODEL for cost tuning.
@@ -71,7 +76,9 @@ Keep it under 40 words. No preamble, no quotation marks — just the reply text.
 Conversation:
 %s`, contactName, transcript)
 
-	resp, err := client().Messages.New(ctx, anthropic.MessageNewParams{
+	callCtx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	resp, err := client().Messages.New(callCtx, anthropic.MessageNewParams{
 		Model:     modelID(),
 		MaxTokens: 512,
 		Messages: []anthropic.MessageParam{
@@ -99,7 +106,9 @@ No preamble. Contact: %s
 Conversation:
 %s`, contactName, transcript)
 
-	resp, err := client().Messages.New(ctx, anthropic.MessageNewParams{
+	callCtx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	resp, err := client().Messages.New(callCtx, anthropic.MessageNewParams{
 		Model:     modelID(),
 		MaxTokens: 512,
 		Messages: []anthropic.MessageParam{
@@ -133,7 +142,9 @@ Line 2: a short (max 20 words) reason
 Conversation:
 %s`, transcript)
 
-	resp, err := client().Messages.New(ctx, anthropic.MessageNewParams{
+	callCtx, cancel := context.WithTimeout(ctx, callTimeout)
+	defer cancel()
+	resp, err := client().Messages.New(callCtx, anthropic.MessageNewParams{
 		Model:     modelID(),
 		MaxTokens: 128,
 		Messages: []anthropic.MessageParam{

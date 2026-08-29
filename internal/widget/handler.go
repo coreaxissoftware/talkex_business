@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,7 +12,14 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 )
+
+// maxWidgetBodyBytes caps a single visitor message. Real chats stay
+// well under 4 KB; anything larger is a scraper filling `text` columns
+// (which then fan out to every SSE subscriber and get substring-scanned
+// by automation.FindMatching, so the cost multiplies).
+const maxWidgetBodyBytes = 4096
 
 // -----------------------------------------------------------------------
 // Injected wires (from main.go) — keep this package free of contacts and
@@ -66,7 +74,18 @@ func RegisterRoutes(r *gin.Engine) {
 	g := r.Group("/widget")
 	{
 		g.GET("/config", handlePublicConfig) // ?key=<publicKey>
-		g.POST("/init", handleInit)
+
+		// /init creates a Contact + Conversation + Session on every
+		// call, so it needs a much stricter cap than the global 60
+		// rpm/IP: at 5 hits per 5 min per IP a botnet can still
+		// register visitors but can't flood contact rows.
+		strict := middleware.RateLimit(middleware.RateLimiterConfig{
+			Rate:  1.0 / 60.0, // 1 token/min = 60/hour cap
+			Burst: 5,
+			KeyFunc: func(c *gin.Context) string { return c.ClientIP() },
+		})
+		g.POST("/init", strict, handleInit)
+
 		g.POST("/message", handleMessage)
 		g.GET("/messages", handleListMessages)
 		g.GET("/stream", handleStream)
@@ -267,9 +286,24 @@ type messageReq struct {
 }
 
 func handleMessage(c *gin.Context) {
+	// Hard-cap the raw body so a scraper can't dump megabytes into
+	// the text column (which then fans out to every SSE subscriber).
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxWidgetBodyBytes*2)
+
 	var req messageReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	// Trim + enforce the character cap on the parsed body itself so
+	// UTF-8 clipping is safe.
+	req.Body = strings.TrimSpace(req.Body)
+	if len(req.Body) == 0 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "empty message"})
+		return
+	}
+	if len(req.Body) > maxWidgetBodyBytes {
+		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"detail": "message too long"})
 		return
 	}
 	cfg, err := FindConfigByKey(database.DB, req.Key)

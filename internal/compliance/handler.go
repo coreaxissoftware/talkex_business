@@ -127,7 +127,10 @@ func handleCompleteDSAR(c *gin.Context) {
 	var body struct {
 		Response string `json:"response"`
 	}
-	c.ShouldBindJSON(&body)
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
 	req, err := CompleteDSAR(database.DB, auth.GetUserID(c), c.Param("id"), body.Response)
 	if err != nil {
 		if err == ErrDSARNotFound {
@@ -144,7 +147,10 @@ func handleRejectDSAR(c *gin.Context) {
 	var body struct {
 		Reason string `json:"reason"`
 	}
-	c.ShouldBindJSON(&body)
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
 	req, err := RejectDSAR(database.DB, auth.GetUserID(c), c.Param("id"), body.Reason)
 	if err != nil {
 		if err == ErrDSARNotFound {

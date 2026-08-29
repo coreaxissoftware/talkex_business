@@ -94,6 +94,21 @@ func ListMembers(db *gorm.DB, orgID string) ([]OrgMember, error) {
 	return members, err
 }
 
+// IsMemberOrOwner returns true when userID either owns the org or is
+// on its OrgMember roster. Callers use it to gate cross-tenant reads.
+func IsMemberOrOwner(db *gorm.DB, orgID, userID string) bool {
+	var org Organization
+	if err := db.Where("id = ?", orgID).First(&org).Error; err != nil {
+		return false
+	}
+	if org.OwnerID == userID {
+		return true
+	}
+	var count int64
+	db.Model(&OrgMember{}).Where("org_id = ? AND user_id = ?", orgID, userID).Count(&count)
+	return count > 0
+}
+
 func AddMember(db *gorm.DB, orgID, userID, role string) (*OrgMember, error) {
 	// Check org user limit
 	var org Organization

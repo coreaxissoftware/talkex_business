@@ -58,7 +58,14 @@ func handleCreate(c *gin.Context) {
 }
 
 func handleGet(c *gin.Context) {
-	org, err := GetByID(database.DB, c.Param("id"))
+	orgID := c.Param("id")
+	// Membership gate: caller must own or be a member. Anything else
+	// returns 404 (not 403) so we don't leak org-exists metadata.
+	if !IsMemberOrOwner(database.DB, orgID, auth.GetUserID(c)) {
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Organization not found"})
+		return
+	}
+	org, err := GetByID(database.DB, orgID)
 	if err == ErrOrgNotFound {
 		c.JSON(http.StatusNotFound, gin.H{"detail": "Organization not found"})
 		return
@@ -99,7 +106,12 @@ func handleUpdate(c *gin.Context) {
 }
 
 func handleListMembers(c *gin.Context) {
-	members, err := ListMembers(database.DB, c.Param("id"))
+	orgID := c.Param("id")
+	if !IsMemberOrOwner(database.DB, orgID, auth.GetUserID(c)) {
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Organization not found"})
+		return
+	}
+	members, err := ListMembers(database.DB, orgID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
 		return
@@ -171,7 +183,14 @@ func handleRemoveMember(c *gin.Context) {
 }
 
 func handleListSubOrgs(c *gin.Context) {
-	orgs, err := ListSubOrgs(database.DB, c.Param("id"))
+	orgID := c.Param("id")
+	// Only owners or members of the parent may enumerate its
+	// downstream (reseller hierarchy is confidential).
+	if !IsMemberOrOwner(database.DB, orgID, auth.GetUserID(c)) {
+		c.JSON(http.StatusNotFound, gin.H{"detail": "Organization not found"})
+		return
+	}
+	orgs, err := ListSubOrgs(database.DB, orgID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
 		return
