@@ -24,6 +24,9 @@ import {
   ShieldCheck,
   Building,
   Book,
+  Zap,
+  Star,
+  Calendar,
 } from 'lucide-react'
 
 const PAGES = [
@@ -35,6 +38,9 @@ const PAGES = [
   { path: '/templates', label: 'Templates', icon: FileText, keywords: 'message body' },
   { path: '/media', label: 'Media Library', icon: Image, keywords: 'files images upload' },
   { path: '/campaigns', label: 'Campaigns', icon: Megaphone, keywords: 'bulk send broadcast' },
+  { path: '/calendar', label: 'Broadcast Calendar', icon: Calendar, keywords: 'schedule scheduled campaigns month' },
+  { path: '/canned-responses', label: 'Canned Responses', icon: Zap, keywords: 'quick reply snippet shortcut' },
+  { path: '/csat', label: 'CSAT Ratings', icon: Star, keywords: 'satisfaction rating feedback score' },
   { path: '/conversations', label: 'Conversations', icon: MessageSquare, keywords: 'inbox chat messages' },
   { path: '/automation', label: 'Automation', icon: Workflow, keywords: 'rules triggers auto-reply' },
   { path: '/developers', label: 'Developers', icon: Code2, keywords: 'api keys playground' },

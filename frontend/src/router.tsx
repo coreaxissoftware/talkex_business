@@ -31,6 +31,9 @@ import Compliance from './pages/Compliance'
 import Organizations from './pages/Organizations'
 import ApiDocs from './pages/ApiDocs'
 import OAuthCallback from './pages/OAuthCallback'
+import CannedResponses from './pages/CannedResponses'
+import CsatPage from './pages/CsatPage'
+import BroadcastCalendar from './pages/BroadcastCalendar'
 
 const router = createBrowserRouter([
   {
@@ -73,6 +76,9 @@ const router = createBrowserRouter([
           { path: '/compliance', element: <Compliance /> },
           { path: '/organizations', element: <Organizations /> },
           { path: '/api-docs', element: <ApiDocs /> },
+          { path: '/canned-responses', element: <CannedResponses /> },
+          { path: '/csat', element: <CsatPage /> },
+          { path: '/calendar', element: <BroadcastCalendar /> },
         ],
       },
     ],

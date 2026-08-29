@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode so a user toggle can override system preference */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* TalkEx Business brand tokens */
 @theme {
   --color-primary-50: #eff6ff;
@@ -22,9 +25,14 @@ body {
   @apply bg-gray-50 text-gray-900 antialiased;
 }
 
-/* Dark mode body overrides */
+/* Dark mode — manual class strategy */
+html.dark body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* Auto-apply dark mode when user's OS prefers it AND they haven't chosen light */
 @media (prefers-color-scheme: dark) {
-  body {
+  html:not(.light):not(.dark) body {
     @apply bg-gray-900 text-gray-100;
   }
 }

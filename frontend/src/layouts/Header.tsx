@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { LogOut, User as UserIcon, Menu, Search } from 'lucide-react'
+import { LogOut, User as UserIcon, Menu, Search, Sun, Moon } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import NotificationBell from '../components/NotificationBell'
 import CommandPalette from '../components/CommandPalette'
+import { useTheme } from '../hooks/useTheme'
 
 interface HeaderProps {
   onMenuClick?: () => void
@@ -11,6 +12,8 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuthStore()
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const { theme, toggle } = useTheme()
+  const isDark = theme === 'dark'
 
   // Ctrl+K / Cmd+K to open
   useEffect(() => {
@@ -50,6 +53,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-4">
+          {/* Theme toggle */}
+          <button
+            onClick={toggle}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors"
+            title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           <NotificationBell />
 
           {/* User menu */}

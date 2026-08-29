@@ -16,7 +16,9 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/automation"
 	"github.com/coreaxissoftware/talkex_business/internal/billing"
 	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
+	"github.com/coreaxissoftware/talkex_business/internal/canned"
 	"github.com/coreaxissoftware/talkex_business/internal/channels"
+	"github.com/coreaxissoftware/talkex_business/internal/csat"
 	"github.com/coreaxissoftware/talkex_business/internal/compliance"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/contactlists"
@@ -98,6 +100,8 @@ func main() {
 		&compliance.ConsentRecord{},
 		&compliance.DSARRequest{},
 		&compliance.ProcessingRecord{},
+		&canned.Response{},
+		&csat.Rating{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -152,6 +156,8 @@ func main() {
 	compliance.RegisterRoutes(r)
 	otp.RegisterRoutes(r)
 	auth.RegisterOAuthRoutes(r)
+	canned.RegisterRoutes(r)
+	csat.RegisterRoutes(r)
 	channels.RegisterWebhookRoutes(r)
 
 	// Wire OAuth user creator — lets auth.handleOAuthCallback find/create
