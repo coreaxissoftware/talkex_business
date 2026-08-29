@@ -59,6 +59,7 @@ const navGroups = [
     label: 'Automation & Dev',
     items: [
       { to: '/automation', icon: Workflow, label: 'Automation' },
+      { to: '/flows', icon: Workflow, label: 'Chatbot Flows' },
       { to: '/developers', icon: Code2, label: 'Developers' },
       { to: '/api-docs', icon: Book, label: 'API Docs' },
       { to: '/webhooks', icon: Webhook, label: 'Webhooks' },

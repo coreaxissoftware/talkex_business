@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/conversations"
 	"github.com/coreaxissoftware/talkex_business/internal/developers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/flows"
 	"github.com/coreaxissoftware/talkex_business/internal/media"
 	"github.com/coreaxissoftware/talkex_business/internal/messaging"
 	"github.com/coreaxissoftware/talkex_business/internal/otp"
@@ -104,6 +106,8 @@ func main() {
 		&canned.Response{},
 		&csat.Rating{},
 		&payments.Order{},
+		&flows.Flow{},
+		&flows.RunState{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
@@ -161,6 +165,7 @@ func main() {
 	canned.RegisterRoutes(r)
 	csat.RegisterRoutes(r)
 	payments.RegisterRoutes(r)
+	flows.RegisterRoutes(r)
 	channels.RegisterWebhookRoutes(r)
 
 	// Wire payments → wallet credit. Uses paymentID as idempotency key
@@ -250,6 +255,16 @@ func main() {
 	// (b) drop an in-app notification, and (c) deliver the event to any
 	// subscribed outbound webhooks. Each is best-effort.
 	conversations.RegisterInboundHook(func(ownerID string, msg *conversations.Message, conv *conversations.Conversation) {
+		// (0) Flow engine — first advance any active RunState for this
+		// contact (branch steps waiting on a reply), then try to start a
+		// new flow if a keyword-triggered flow matches the body.
+		flows.HandleInbound(database.DB, ownerID, conv.ContactID, msg.Body)
+		if f, err := flows.FindMatchingByKeyword(database.DB, ownerID, msg.Body); err == nil && f != nil {
+			if _, err := flows.StartRun(database.DB, f, conv.ContactID, conv.Channel); err != nil {
+				log.Printf("flow %s: start failed: %v", f.ID, err)
+			}
+		}
+
 		// (a) Automation — match a rule + reply. When the rule points to a
 		// template, use the template body so the auto-reply respects the
 		// author's approved copy; ResponseBody remains the free-form
@@ -442,6 +457,53 @@ func main() {
 		}
 		return prefs.ApprovalThreshold
 	})
+
+	// Wire flow engine — send/assign/tag callbacks
+	flows.RegisterSender(func(ownerID, contactID, channel, body string, templateID *string) error {
+		_, _, err := conversations.SendOutbound(database.DB, ownerID, &conversations.SendInput{
+			ContactID:  contactID,
+			Channel:    channel,
+			Body:       body,
+			TemplateID: templateID,
+		})
+		return err
+	})
+	flows.RegisterAssigner(func(ownerID, contactID, agentUserID string) error {
+		// Find the most recent conversation for this contact (any channel)
+		var conv conversations.Conversation
+		if err := database.DB.Where("owner_id = ? AND contact_id = ?", ownerID, contactID).
+			Order("last_message_at DESC").First(&conv).Error; err != nil {
+			return err
+		}
+		name := agentUserID
+		if m, err := team.GetByUserID(database.DB, agentUserID); err == nil && m != nil && m.Name != "" {
+			name = m.Name
+		}
+		_, err := conversations.UpdateConversation(database.DB, &conv, &conversations.UpdateInput{
+			AssignedTo:   &agentUserID,
+			AssignedName: &name,
+		})
+		return err
+	})
+	flows.RegisterTagger(func(ownerID, contactID, tag string) error {
+		ct, err := contacts.GetByID(database.DB, ownerID, contactID)
+		if err != nil {
+			return err
+		}
+		var tags []string
+		_ = json.Unmarshal(ct.Tags, &tags)
+		for _, t := range tags {
+			if t == tag {
+				return nil // already present
+			}
+		}
+		tags = append(tags, tag)
+		_, err = contacts.Update(database.DB, ct, &contacts.UpdateInput{Tags: &tags})
+		return err
+	})
+
+	// Background flow sweeper — advances waiting steps every 30s
+	flows.StartSweeper(database.DB, 30*time.Second)
 
 	// Background campaign scheduler — auto-launches campaigns when scheduled_at arrives
 	campaigns.StartScheduler(database.DB)

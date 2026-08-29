@@ -43,6 +43,7 @@ const PAGES = [
   { path: '/csat', label: 'CSAT Ratings', icon: Star, keywords: 'satisfaction rating feedback score' },
   { path: '/conversations', label: 'Conversations', icon: MessageSquare, keywords: 'inbox chat messages' },
   { path: '/automation', label: 'Automation', icon: Workflow, keywords: 'rules triggers auto-reply' },
+  { path: '/flows', label: 'Chatbot Flows', icon: Workflow, keywords: 'flow builder chatbot conversation steps' },
   { path: '/developers', label: 'Developers', icon: Code2, keywords: 'api keys playground' },
   { path: '/api-docs', label: 'API Documentation', icon: Book, keywords: 'reference endpoints' },
   { path: '/webhooks', label: 'Webhooks', icon: Webhook, keywords: 'events callbacks' },

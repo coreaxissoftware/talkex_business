@@ -34,6 +34,7 @@ import OAuthCallback from './pages/OAuthCallback'
 import CannedResponses from './pages/CannedResponses'
 import CsatPage from './pages/CsatPage'
 import BroadcastCalendar from './pages/BroadcastCalendar'
+import Flows from './pages/Flows'
 
 const router = createBrowserRouter([
   {
@@ -79,6 +80,7 @@ const router = createBrowserRouter([
           { path: '/canned-responses', element: <CannedResponses /> },
           { path: '/csat', element: <CsatPage /> },
           { path: '/calendar', element: <BroadcastCalendar /> },
+          { path: '/flows', element: <Flows /> },
         ],
       },
     ],
