@@ -12,7 +12,7 @@ The stack is deliberately boring — three components, all open standards.
 
 ## Scraping
 
-Point any Prometheus-compatible scraper at `https://api.talkex.io/metrics`. On Fly.io the [metrics] block in `fly.toml` already registers the path, so the built-in Fly metrics dashboard picks it up automatically.
+Point any Prometheus-compatible scraper at `https://api.business.talkex.in/metrics`. On Fly.io the [metrics] block in `fly.toml` already registers the path, so the built-in Fly metrics dashboard picks it up automatically.
 
 For a proper long-term store, forward to **Grafana Cloud** (free 10k series tier is enough):
 
@@ -24,7 +24,7 @@ scrape_configs:
     metrics_path: /metrics
     scheme: https
     static_configs:
-      - targets: ['api.talkex.io']
+      - targets: ['api.business.talkex.in']
 ```
 
 ## Grafana dashboards
@@ -55,7 +55,7 @@ Add `SENTRY_DSN` as a Fly secret. The recovery middleware still runs — Sentry 
 
 ## Uptime checks
 
-- **status.talkex.io** — self-hosted [Uptime Kuma](https://github.com/louislam/uptime-kuma) container hitting `/health` from three regions every 60s
+- **status.business.talkex.in** — self-hosted [Uptime Kuma](https://github.com/louislam/uptime-kuma) container hitting `/health` from three regions every 60s
 - **PagerDuty** integration on the Kuma status → phone-call after 3 consecutive failures
 
 ## Alert rules

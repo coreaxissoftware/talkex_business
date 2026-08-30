@@ -53,10 +53,10 @@ services:
       REDIS_URL: "redis://redis:6379"
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required (>=32 chars)}
       ENVIRONMENT: production
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://talkex.io}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://business.talkex.in}
       PORT: "8080"
-      BASE_URL: ${BASE_URL:-https://api.talkex.io}
-      FRONTEND_URL: ${FRONTEND_URL:-https://app.talkex.io}
+      BASE_URL: ${BASE_URL:-https://api.business.talkex.in}
+      FRONTEND_URL: ${FRONTEND_URL:-https://app.business.talkex.in}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_SECRET: ${RAZORPAY_SECRET:-}

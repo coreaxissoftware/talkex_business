@@ -1,8 +1,8 @@
 # TalkEx Business — marketing site
 
-Static single-page app (hash-routed) that lives at **[talkex.io](https://talkex.io)**.
+Static single-page app (hash-routed) that lives at **[business.talkex.in](https://business.talkex.in)**.
 The actual product dashboard is a separate Vite app at `/frontend`, deployed to
-`app.talkex.io`.
+`app.business.talkex.in`.
 
 ## Structure
 
@@ -10,7 +10,7 @@ The actual product dashboard is a separate Vite app at `/frontend`, deployed to
   `#/blog`, `#/docs`, `#/status`, `#/case-studies`, `#/demo`, `#/legal/*`, etc.)
   is a section swap in the same document.
 - **`vercel.json`** — SPA rewrites, security headers, CSP restricted to Google
-  Fonts + `app.talkex.io`, `/signup` and `/login` redirects to the app.
+  Fonts + `app.business.talkex.in`, `/signup` and `/login` redirects to the app.
 
 ## Local preview
 
@@ -30,14 +30,14 @@ Then open <http://localhost:3000/> (or `:4000`).
 cd marketing && vercel --prod
 ```
 
-Point the `talkex.io` apex + `www.talkex.io` at the resulting project. The
-dashboard app (Vercel project #2) sits on `app.talkex.io` and is deployed from
+Point the `business.talkex.in` apex + `www.business.talkex.in` at the resulting project. The
+dashboard app (Vercel project #2) sits on `app.business.talkex.in` and is deployed from
 `/frontend` with its own `deploy/vercel.json`.
 
 ## Wiring to the app
 
-- Header **Sign in** → `https://app.talkex.io/login`
-- All **Start free** CTAs → `https://app.talkex.io/register`
+- Header **Sign in** → `https://app.business.talkex.in/login`
+- All **Start free** CTAs → `https://app.business.talkex.in/register`
 - Footer **Book a demo** → `#/demo` (in-page booking form)
 - Footer **Status** → `#/status` (mirror of api uptime)
 

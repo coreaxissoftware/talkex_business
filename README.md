@@ -177,7 +177,7 @@ frontend/
     layouts/            ← DashboardLayout + AuthLayout + Sidebar + Header
     store/              ← Zustand stores (authStore)
     router.tsx          ← react-router route table
-marketing/              ← Static single-page marketing site (talkex.io)
+marketing/              ← Static single-page marketing site (business.talkex.in)
   index.html            ← Hash-routed SPA: /product, /pricing, /docs, /blog,
                           /case-studies, /demo, /status, /legal/*, etc.
   vercel.json           ← SPA rewrites + CSP + /signup /login redirects to app
@@ -186,10 +186,10 @@ marketing/              ← Static single-page marketing site (talkex.io)
 
 ### Two-site deploy
 
-The dashboard (`frontend/`) deploys to **`app.talkex.io`**; the marketing site
-(`marketing/`) is a separate Vercel project on **`talkex.io`**. The header
+The dashboard (`frontend/`) deploys to **`app.business.talkex.in`**; the marketing site
+(`marketing/`) is a separate Vercel project on **`business.talkex.in`**. The header
 "Sign in" and every "Start free" CTA hard-links from marketing to the app; the
-app's login and register pages carry a "← Back to talkex.io" link the other
+app's login and register pages carry a "← Back to business.talkex.in" link the other
 way.
 
 ---

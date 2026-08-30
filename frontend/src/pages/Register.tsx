@@ -115,10 +115,10 @@ export default function Register() {
       {/* Back to marketing site */}
       <div className="mb-4">
         <a
-          href="https://talkex.io"
+          href="https://business.talkex.in"
           className="text-xs text-gray-500 hover:text-primary-600 inline-flex items-center gap-1"
         >
-          ← Back to talkex.io
+          ← Back to business.talkex.in
         </a>
       </div>
 

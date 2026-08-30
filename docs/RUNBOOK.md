@@ -2,7 +2,7 @@
 
 The five things that page you at night, and what to do about each.
 
-> **Rule zero — before touching anything:** open [`grafana.talkex.io`](#) in one tab and [`status.talkex.io`](#) in another. If Grafana disagrees with the alert, trust Grafana.
+> **Rule zero — before touching anything:** open [`grafana.business.talkex.in`](#) in one tab and [`status.business.talkex.in`](#) in another. If Grafana disagrees with the alert, trust Grafana.
 
 ---
 

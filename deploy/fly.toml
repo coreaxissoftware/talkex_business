@@ -21,9 +21,9 @@ kill_timeout = "30s"
 [env]
   PORT = "8080"
   ENVIRONMENT = "production"
-  CORS_ORIGINS = "https://talkex.io,https://www.talkex.io,https://app.talkex.io"
-  BASE_URL = "https://api.talkex.io"
-  FRONTEND_URL = "https://app.talkex.io"
+  CORS_ORIGINS = "https://business.talkex.in,https://www.business.talkex.in,https://app.business.talkex.in"
+  BASE_URL = "https://api.business.talkex.in"
+  FRONTEND_URL = "https://app.business.talkex.in"
   # DATABASE_URL, REDIS_URL, JWT_SECRET, and provider creds come from Fly secrets
 
 [[services]]
