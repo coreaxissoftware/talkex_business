@@ -1,0 +1,105 @@
+# Production Docker Compose — for self-hosted deployments.
+# Run behind a TLS-terminating reverse proxy (Caddy, Traefik, or nginx).
+# All secrets come from an .env file next to this compose file — never
+# commit it. See .env.example at the repo root for every var.
+#
+# One-time setup:
+#   cp ../.env.example .env
+#   # edit .env — at minimum set JWT_SECRET, DATABASE_URL (or leave sqlite fallback)
+#   docker compose -f deploy/docker-compose.prod.yml up -d
+#   docker compose -f deploy/docker-compose.prod.yml exec api /app/talkex-api migrate  # (if you add a migrate subcommand)
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-talkex}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-talkex_business}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups            # backup.sh writes here
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-talkex} -d ${POSTGRES_DB:-talkex_business}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 1G }
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    deploy:
+      resources:
+        limits: { memory: 384M }
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis:    { condition: service_started }
+    environment:
+      DATABASE_URL: "postgres://${POSTGRES_USER:-talkex}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-talkex_business}?sslmode=disable"
+      REDIS_URL: "redis://redis:6379"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required (>=32 chars)}
+      ENVIRONMENT: production
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://talkex.io}
+      PORT: "8080"
+      BASE_URL: ${BASE_URL:-https://api.talkex.io}
+      FRONTEND_URL: ${FRONTEND_URL:-https://app.talkex.io}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_SECRET: ${RAZORPAY_SECRET:-}
+      RAZORPAY_WEBHOOK_SECRET: ${RAZORPAY_WEBHOOK_SECRET:-}
+      META_WHATSAPP_TOKEN: ${META_WHATSAPP_TOKEN:-}
+      META_WHATSAPP_WABA_ID: ${META_WHATSAPP_WABA_ID:-}
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "127.0.0.1:8080:8080"           # bind localhost — reverse proxy adds TLS
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits: { memory: 512M }
+      replicas: 2                       # HA: two API pods, one Redis, one Postgres
+
+  # Nightly backup job — writes a .sql.gz + a JSON per-tenant dump.
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      postgres: { condition: service_healthy }
+    volumes:
+      - ./backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-talkex}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-talkex_business}
+      # 02:30 IST every day — quiet hour before traffic picks up
+      CRON_SCHEDULE: "30 21 * * *"      # UTC (02:30 IST)
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "$$CRON_SCHEDULE /backup.sh" > /var/spool/cron/crontabs/root
+        crond -f -l 2
+
+volumes:
+  postgres_data:
+  redis_data:
+  uploads:

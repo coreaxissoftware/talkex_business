@@ -1,0 +1,68 @@
+# TalkEx Business API — Fly.io deployment
+# One-time setup:
+#   flyctl launch --no-deploy --dockerfile ./Dockerfile
+#   flyctl postgres create --name talkex-db --region bom
+#   flyctl postgres attach talkex-db
+#   flyctl redis create --name talkex-cache --region bom
+#   flyctl secrets set JWT_SECRET="$(openssl rand -base64 64 | tr -d '\n')"
+#   flyctl secrets set ANTHROPIC_API_KEY=... RAZORPAY_KEY_ID=... RAZORPAY_SECRET=... RAZORPAY_WEBHOOK_SECRET=...
+#   flyctl secrets set META_WHATSAPP_TOKEN=... META_WHATSAPP_WABA_ID=...
+# Then:
+#   flyctl deploy
+
+app = "talkex-api"
+primary_region = "bom"                # Mumbai — closest to Indian customers
+kill_signal = "SIGINT"
+kill_timeout = "30s"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  ENVIRONMENT = "production"
+  CORS_ORIGINS = "https://talkex.io,https://www.talkex.io,https://app.talkex.io"
+  BASE_URL = "https://api.talkex.io"
+  FRONTEND_URL = "https://app.talkex.io"
+  # DATABASE_URL, REDIS_URL, JWT_SECRET, and provider creds come from Fly secrets
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  auto_stop_machines = "off"           # Keep SSE + scheduler warm — no cold starts
+  auto_start_machines = true
+  min_machines_running = 2             # HA across two machines from day one
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 300
+    soft_limit = 200
+
+  [[services.http_checks]]
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"
+    method = "get"
+    path = "/health"
+
+# Uploads volume — media library persists across deploys
+[mounts]
+  source = "talkex_uploads"
+  destination = "/app/uploads"
+
+[metrics]
+  port = 8080
+  path = "/metrics"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
