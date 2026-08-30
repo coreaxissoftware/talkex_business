@@ -112,6 +112,16 @@ export default function Register() {
 
   return (
     <div>
+      {/* Back to marketing site */}
+      <div className="mb-4">
+        <a
+          href="https://talkex.io"
+          className="text-xs text-gray-500 hover:text-primary-600 inline-flex items-center gap-1"
+        >
+          ← Back to talkex.io
+        </a>
+      </div>
+
       {/* Mobile logo */}
       <div className="mb-6 lg:hidden text-center">
         <img src={talkexIcon} alt="TalkEx" className="h-12 w-12 rounded-xl mx-auto mb-3" />
