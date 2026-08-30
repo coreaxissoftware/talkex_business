@@ -1,7 +1,7 @@
 package widget
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -18,17 +18,41 @@ func handleSnippet(c *gin.Context) {
 
 	c.Header("Content-Type", "application/javascript; charset=utf-8")
 	c.Header("Cache-Control", "public, max-age=300")
-	fmt.Fprintf(c.Writer, snippetJS, apiBase)
+	// Build via string replace of a sentinel — fmt.Fprintf would
+	// misread the many `%` characters in embedded CSS (widths,
+	// transparencies) as format verbs and go vet would flag it.
+	body := strings.ReplaceAll(snippetJS, "__API_BASE__", strconvQuote(apiBase))
+	c.Writer.Write([]byte(body))
 }
 
-// snippetJS is a single %s placeholder for the API base URL. The rest
-// is plain JS/CSS — a floating bubble that expands into a chat panel,
-// posts via /widget/message, and listens on /widget/stream for replies.
+// strconvQuote wraps a URL string in double quotes with backslash
+// escaping — matches what fmt "%q" produced before the switch to
+// sentinel-based substitution.
+func strconvQuote(s string) string {
+	var b strings.Builder
+	b.WriteByte('"')
+	for _, r := range s {
+		switch r {
+		case '"', '\\':
+			b.WriteByte('\\')
+			b.WriteRune(r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
+// snippetJS carries the sentinel token __API_BASE__ (replaced at request
+// time). Everything else is plain JS/CSS — a floating bubble that expands
+// into a chat panel, posts via /widget/message, and listens on
+// /widget/stream for replies.
 const snippetJS = `(function() {
   var script = document.currentScript;
   var key = script && script.getAttribute('data-key');
   if (!key) { console.warn('TalkEx widget: missing data-key'); return; }
-  var API = %q;
+  var API = __API_BASE__;
   var sessionKey = 'talkex_widget_session_' + key;
   var STORAGE = window.localStorage;
 

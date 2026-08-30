@@ -10,6 +10,7 @@ export interface User {
   business_category: string | null
   quality_flagged_at: string | null
   quality_status: QualityStatus
+  two_factor_enabled?: boolean
   created_at: string
 }
 

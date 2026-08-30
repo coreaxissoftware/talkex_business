@@ -6,8 +6,8 @@ import {
   Mail,
   Smartphone,
   MessageSquare,
-  Instagram,
-  Facebook,
+  Camera,
+  MessagesSquare,
   Check,
   X,
   ChevronRight,
@@ -30,8 +30,8 @@ const ICONS: Record<string, React.ComponentType<{ size?: number; className?: str
   mail: Mail,
   smartphone: Smartphone,
   'message-square': MessageSquare,
-  instagram: Instagram,
-  facebook: Facebook,
+  instagram: Camera,          // lucide has no Instagram icon
+  facebook: MessagesSquare,   // lucide has no Facebook icon
 }
 
 const ACCENTS: Record<string, string> = {

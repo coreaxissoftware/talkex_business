@@ -9,8 +9,6 @@ import {
   AlertTriangle,
   Plus,
   Eye,
-  Trash2,
-  X,
 } from 'lucide-react'
 import {
   complianceService,

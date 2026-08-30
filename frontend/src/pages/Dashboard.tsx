@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { Wallet, MessageSquare, Users, FileText, Send, CheckCircle2, Plus, Megaphone, ScrollText, ArrowRight, Radio, Phone, Mail, Smartphone, Instagram, Facebook } from 'lucide-react'
+import { Wallet, MessageSquare, Users, FileText, Send, CheckCircle2, Plus, Megaphone, ScrollText, ArrowRight, Radio, Phone, Mail, Smartphone, Camera, MessagesSquare } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { walletService } from '../services/wallet'
 import { contactsService } from '../services/contacts'
@@ -196,8 +196,8 @@ export default function Dashboard() {
                 email: Mail,
                 sms: Smartphone,
                 rcs: MessageSquare,
-                instagram: Instagram,
-                messenger: Facebook,
+                instagram: Camera,
+                messenger: MessagesSquare,
               }
               const channelColors: Record<string, string> = {
                 talkex: 'text-primary-600 bg-primary-50',

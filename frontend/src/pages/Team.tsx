@@ -118,7 +118,9 @@ export default function Team() {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {members.map(m => {
-                  const rc = roleConfig[m.role] || roleConfig.viewer
+                  // rc retained for future use — role icon/tint tooltip
+                  const _rc = roleConfig[m.role] || roleConfig.viewer
+                  void _rc
                   return (
                     <tr key={m.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-4 py-3">
