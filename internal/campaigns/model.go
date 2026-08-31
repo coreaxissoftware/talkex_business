@@ -63,4 +63,21 @@ type Campaign struct {
 	RejectedBy       *string    `gorm:"type:varchar(36)" json:"rejected_by"`
 	RejectedAt       *time.Time `json:"rejected_at"`
 	RejectionReason  *string    `gorm:"type:varchar(500)" json:"rejection_reason"`
+
+	// A/B testing — when Variants is populated, the runner deterministically
+	// assigns each recipient to variant i = index(contact_id) % len(variants).
+	// The chosen template overrides the campaign's TemplateID for that
+	// send only; per-variant counters roll up into VariantStats.
+	Variants     datatypes.JSON `gorm:"type:json;default:'[]'" json:"variants"`      // []string of template IDs
+	VariantStats datatypes.JSON `gorm:"type:json;default:'{}'" json:"variant_stats"` // map[string]{sent,delivered,read,clicked}
+}
+
+// VariantStat holds per-variant roll-ups the analytics page renders as
+// a bar chart. Keys in Campaign.VariantStats are the template IDs from
+// Campaign.Variants.
+type VariantStat struct {
+	Sent      int `json:"sent"`
+	Delivered int `json:"delivered"`
+	Read      int `json:"read"`
+	Clicked   int `json:"clicked"`
 }

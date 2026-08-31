@@ -28,4 +28,10 @@ type Contact struct {
 	OptedInAt       *time.Time      `json:"opted_in_at"`
 	LastInboundAt   *time.Time      `json:"last_inbound_at"`
 	FallbackChannel *string         `gorm:"type:varchar(50)" json:"fallback_channel"`
+	// LifecycleStage — computed by contacts.RefreshLifecycle: new / active
+	// / dormant / churned. Drives the funnel report on the Contacts page.
+	LifecycleStage  string          `gorm:"type:varchar(20);default:'new';index" json:"lifecycle_stage"`
+	// LeadScore — 0-100 aggregated by internal/leadscore. Bumped by
+	// inbound activity, message opens, clicks; decayed weekly.
+	LeadScore       int             `gorm:"default:0;index" json:"lead_score"`
 }

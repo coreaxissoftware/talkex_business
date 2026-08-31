@@ -24,6 +24,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/businesshours"
 	"github.com/coreaxissoftware/talkex_business/internal/campaigns"
 	"github.com/coreaxissoftware/talkex_business/internal/canned"
+	"github.com/coreaxissoftware/talkex_business/internal/catalog"
 	"github.com/coreaxissoftware/talkex_business/internal/channels"
 	"github.com/coreaxissoftware/talkex_business/internal/csat"
 	"github.com/coreaxissoftware/talkex_business/internal/compliance"
@@ -120,6 +121,7 @@ func main() {
 		&compliance.DSARRequest{},
 		&compliance.ProcessingRecord{},
 		&canned.Response{},
+		&catalog.Product{},
 		&csat.Rating{},
 		&payments.Order{},
 		&flows.Flow{},
@@ -194,6 +196,7 @@ func main() {
 	otp.RegisterRoutes(r)
 	auth.RegisterOAuthRoutes(r)
 	canned.RegisterRoutes(r)
+	catalog.RegisterRoutes(r)
 	csat.RegisterRoutes(r)
 	payments.RegisterRoutes(r)
 	flows.RegisterRoutes(r)

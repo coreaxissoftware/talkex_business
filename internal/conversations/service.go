@@ -292,6 +292,15 @@ func RecordInbound(db *gorm.DB, ownerID string, in *InboundInput) (*Message, *Co
 		Where("id = ?", in.ContactID).
 		Update("last_inbound_at", now).Error
 
+	// Compliance: auto-revoke consent on STOP/UNSUBSCRIBE/etc. Runs
+	// BEFORE registered hooks so an automation reply skips a contact who
+	// just opted out.
+	evaluateOptOut(db, ownerID, msg, conv)
+
+	// Lead score — every inbound counts as engagement; if the contact
+	// just opted out, evaluateOptOut has already applied the penalty.
+	contacts.Bump(db, ownerID, in.ContactID, contacts.EventInboundMessage)
+
 	// Fire registered hooks (e.g. automation auto-reply). Recover per hook
 	// so a broken listener can't kill the inbound path.
 	for _, h := range inboundHooks {
