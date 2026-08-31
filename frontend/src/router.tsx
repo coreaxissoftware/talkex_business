@@ -37,6 +37,10 @@ import BroadcastCalendar from './pages/BroadcastCalendar'
 import Flows from './pages/Flows'
 import LiveChat from './pages/LiveChat'
 import TeamActivity from './pages/TeamActivity'
+import Deals from './pages/Deals'
+import Catalog from './pages/Catalog'
+import GreenTick from './pages/GreenTick'
+import Integrations from './pages/Integrations'
 
 const router = createBrowserRouter([
   {
@@ -85,6 +89,10 @@ const router = createBrowserRouter([
           { path: '/flows', element: <Flows /> },
           { path: '/live-chat', element: <LiveChat /> },
           { path: '/team/activity', element: <TeamActivity /> },
+          { path: '/deals', element: <Deals /> },
+          { path: '/catalog', element: <Catalog /> },
+          { path: '/green-tick', element: <GreenTick /> },
+          { path: '/integrations', element: <Integrations /> },
         ],
       },
     ],

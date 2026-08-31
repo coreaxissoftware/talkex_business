@@ -27,6 +27,10 @@ import {
   Zap,
   Star,
   Calendar,
+  Briefcase,
+  ShoppingBag,
+  BadgeCheck,
+  Plug,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -53,6 +57,15 @@ const navGroups = [
       { to: '/conversations', icon: MessageSquare, label: 'Conversations' },
       { to: '/canned-responses', icon: Zap, label: 'Canned Replies' },
       { to: '/csat', icon: Star, label: 'CSAT' },
+      { to: '/catalog', icon: ShoppingBag, label: 'Catalog' },
+    ],
+  },
+  {
+    label: 'Sales & CRM',
+    items: [
+      { to: '/deals', icon: Briefcase, label: 'Deals' },
+      { to: '/green-tick', icon: BadgeCheck, label: 'Green Tick' },
+      { to: '/integrations', icon: Plug, label: 'Integrations' },
     ],
   },
   {
