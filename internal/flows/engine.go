@@ -223,6 +223,35 @@ func advance(db *gorm.DB, f *Flow, rs *RunState, steps map[string]Step, inbound 
 			if tag != nil && step.TagName != "" {
 				_ = tag(rs.OwnerID, rs.ContactID, step.TagName)
 			}
+		case "split":
+			// Journey builder — condition on the contact's own state.
+			// No inbound required; evaluated immediately against the live
+			// contact row. Missing contact routes to the "no" branch.
+			contact, err := LoadContact(db, rs.OwnerID, rs.ContactID)
+			if err != nil {
+				next = step.BranchNoID
+			} else if EvaluateSplit(contact, step) {
+				next = step.BranchYesID
+			} else {
+				next = step.BranchNoID
+			}
+		case "webhook":
+			// Fire an outbound POST; non-2xx routes to the "no" branch.
+			// Timeout defaults to 5s to keep the engine responsive.
+			timeout := time.Duration(step.WebhookTimeoutS) * time.Second
+			if timeout <= 0 {
+				timeout = 5 * time.Second
+			}
+			ok := postWebhook(step.WebhookURL, rs.OwnerID, rs.ContactID, step.ID, timeout)
+			if ok {
+				if step.BranchYesID != "" {
+					next = step.BranchYesID
+				}
+			} else {
+				if step.BranchNoID != "" {
+					next = step.BranchNoID
+				}
+			}
 		case "end":
 			complete(db, f, rs)
 			return

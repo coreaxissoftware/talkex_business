@@ -56,6 +56,23 @@ type Step struct {
 	AgentUserID  string   `json:"agent_user_id,omitempty"`
 	TagName      string   `json:"tag_name,omitempty"`
 	NextStepID   string   `json:"next_step_id,omitempty"`
+
+	// Journey-builder additions (parity with Wati / DoubleTick / Gupshup):
+	//
+	//   split          → condition-based branch on a contact attribute.
+	//                    Reads Contact.{Tags,LifecycleStage,LeadScore,
+	//                    CustomFields[ConditionField]} and compares to
+	//                    ConditionValue with ConditionOp. Splits to
+	//                    BranchYesID / BranchNoID.
+	//   webhook        → POST WebhookURL with { contact, run_state, step }.
+	//                    Non-2xx routes to BranchNoID; success → BranchYesID
+	//                    or NextStepID.
+	ConditionField string `json:"condition_field,omitempty"` // tag | lifecycle_stage | lead_score | custom.<key>
+	ConditionOp    string `json:"condition_op,omitempty"`    // eq | ne | contains | gt | lt | gte | lte
+	ConditionValue string `json:"condition_value,omitempty"`
+
+	WebhookURL     string `json:"webhook_url,omitempty"`
+	WebhookTimeoutS int   `json:"webhook_timeout_s,omitempty"`
 }
 
 // RunState — one in-flight execution of a Flow for a specific contact.

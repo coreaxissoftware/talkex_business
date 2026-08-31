@@ -68,4 +68,25 @@ type Message struct {
 	DeliveredAt    *time.Time `json:"delivered_at,omitempty"`
 	ReadAt         *time.Time `json:"read_at,omitempty"`
 	ErrorReason    *string    `gorm:"type:varchar(500)" json:"error_reason,omitempty"`
+
+	// Reaction — a single emoji applied to a message. WhatsApp Cloud API
+	// supports one reaction per side; overwriting is the intended UX.
+	// Persisted as a string (a UTF-8 emoji cluster) or empty when removed.
+	Reaction string `gorm:"type:varchar(16)" json:"reaction,omitempty"`
+}
+
+// Reaction is a lightweight event record — one emoji per (message,
+// direction) pair. Kept separate from Message so we can attribute a
+// reaction to the agent user_id or contact_id without shoehorning it
+// into the Message row.
+type Reaction struct {
+	database.Base
+	OwnerID        string `gorm:"type:varchar(36);index;not null" json:"owner_id"`
+	MessageID      string `gorm:"type:varchar(36);index;not null" json:"message_id"`
+	ConversationID string `gorm:"type:varchar(36);index;not null" json:"conversation_id"`
+	Emoji          string `gorm:"type:varchar(16);not null" json:"emoji"`
+	// Direction of the reactor: inbound means the customer reacted,
+	// outbound means an agent did.
+	Direction string  `gorm:"type:varchar(10);not null" json:"direction"`
+	UserID    *string `gorm:"type:varchar(36)" json:"user_id,omitempty"`
 }

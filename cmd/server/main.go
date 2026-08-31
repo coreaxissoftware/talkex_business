@@ -36,8 +36,11 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/conversations"
 	"github.com/coreaxissoftware/talkex_business/internal/developers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/deals"
 	"github.com/coreaxissoftware/talkex_business/internal/events"
 	"github.com/coreaxissoftware/talkex_business/internal/flows"
+	"github.com/coreaxissoftware/talkex_business/internal/greentick"
+	"github.com/coreaxissoftware/talkex_business/internal/integrations"
 	"github.com/coreaxissoftware/talkex_business/internal/media"
 	"github.com/coreaxissoftware/talkex_business/internal/messaging"
 	"github.com/coreaxissoftware/talkex_business/internal/metrics"
@@ -122,6 +125,10 @@ func main() {
 		&compliance.ProcessingRecord{},
 		&canned.Response{},
 		&catalog.Product{},
+		&conversations.Reaction{},
+		&deals.Pipeline{},
+		&deals.Deal{},
+		&greentick.Application{},
 		&csat.Rating{},
 		&payments.Order{},
 		&flows.Flow{},
@@ -197,6 +204,12 @@ func main() {
 	auth.RegisterOAuthRoutes(r)
 	canned.RegisterRoutes(r)
 	catalog.RegisterRoutes(r)
+	deals.RegisterRoutes(r)
+	greentick.RegisterRoutes(r)
+	integrations.RegisterRoutes(r)
+	integrations.RegisterSheetsRoutes(r)
+	analytics.RegisterPDFRoute(r)
+	conversations.RegisterReactionRoutes(r)
 	csat.RegisterRoutes(r)
 	payments.RegisterRoutes(r)
 	flows.RegisterRoutes(r)
