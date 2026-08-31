@@ -25,12 +25,15 @@ func RegisterApiKeyResolver(f ApiKeyResolver) { apiKeyResolver = f }
 func AuthRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		header := c.GetHeader("Authorization")
-		if header == "" || !strings.HasPrefix(header, "Bearer ") {
+		// Case-insensitive Bearer prefix — some SDKs and Postman send
+		// "bearer" or "BEARER". Split on the first space so we don't
+		// silently succeed on malformed inputs like "Bearerxxx".
+		parts := strings.SplitN(header, " ", 2)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || parts[1] == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"detail": "Missing or invalid Authorization header"})
 			return
 		}
-
-		tokenStr := strings.TrimPrefix(header, "Bearer ")
+		tokenStr := strings.TrimSpace(parts[1])
 
 		// Try JWT first — the common case for browser sessions.
 		if userID, err := ValidateToken(tokenStr, AccessToken); err == nil {

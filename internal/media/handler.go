@@ -92,7 +92,13 @@ func handleServeFile(c *gin.Context) {
 	}
 
 	path := filepath.Join(UploadDir, m.Filename)
-	c.Header("Content-Type", m.MimeType)
+	// Force safe MIME + Content-Disposition. Anything non-inline (SVG,
+	// unknown types) becomes an octet-stream attachment so the browser
+	// never renders it in our origin.
+	mime, disp := SafeMimeAndDisposition(&m)
+	c.Header("Content-Type", mime)
+	c.Header("Content-Disposition", disp)
+	c.Header("X-Content-Type-Options", "nosniff")
 	c.File(path)
 }
 
