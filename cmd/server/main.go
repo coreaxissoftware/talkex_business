@@ -135,8 +135,20 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.New()
+	// Only trust Fly.io / Vercel edge; refuse to honor X-Forwarded-For
+	// from arbitrary upstream hops otherwise.
+	_ = r.SetTrustedProxies([]string{"127.0.0.1", "::1"})
+	// Cap multipart uploads at 32 MiB (media library enforces its own
+	// tighter per-file limit).
+	r.MaxMultipartMemory = 32 << 20
+
 	r.Use(middleware.Recovery())
+	r.Use(middleware.RequestID())
+	r.Use(middleware.SecurityHeaders())
 	r.Use(middleware.CORS())
+	r.Use(middleware.BodyLimit(10 << 20)) // 10 MiB JSON/form cap
+	r.Use(middleware.ContentTypeGuard())
+	r.Use(middleware.LoginBruteForceGuard())
 	r.Use(metrics.Middleware())
 	r.Use(gin.Logger())
 	r.Use(audit.Middleware())

@@ -4802,5 +4802,39 @@ tx.conversations.<span class="fn">send</span>(
   });
 </script>
 
+<!-- Client-side hardening: right-click block, devtools shortcut deterrent, iframe buster. -->
+<script>
+(function(){
+  var allow = function(el){
+    if(!el) return false;
+    try { return !!el.closest('input, textarea, [contenteditable="true"], [data-allow-context]'); }
+    catch(_) { return false; }
+  };
+  document.addEventListener('contextmenu', function(e){
+    if(allow(e.target)) return;
+    e.preventDefault();
+  }, true);
+  document.addEventListener('keydown', function(e){
+    var k = (e.key || '').toLowerCase();
+    if(k === 'f12') { e.preventDefault(); return; }
+    if(e.ctrlKey && e.shiftKey && (k === 'i' || k === 'j' || k === 'c' || k === 'k')) { e.preventDefault(); return; }
+    if(e.ctrlKey && (k === 'u' || k === 's')) { e.preventDefault(); return; }
+    if(e.metaKey && e.altKey && (k === 'i' || k === 'j' || k === 'c')) { e.preventDefault(); return; }
+    if(e.metaKey && (k === 'u' || k === 's')) { e.preventDefault(); return; }
+  }, true);
+  document.addEventListener('dragstart', function(e){
+    if(allow(e.target)) return;
+    var t = e.target && e.target.tagName;
+    if(t === 'IMG' || t === 'A') e.preventDefault();
+  }, true);
+  try {
+    if (window.top && window.top !== window.self) {
+      window.top.location.href = window.self.location.href;
+    }
+  } catch(_) {
+    document.body.innerHTML = '';
+  }
+})();
+</script>
 </body>
 </html>

@@ -39,7 +39,7 @@ var (
 )
 
 func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 12)
 	return string(bytes), err
 }
 
@@ -150,7 +150,7 @@ func FindOrCreateOAuth(db *gorm.DB, email, fullName, provider string) (*User, er
 
 	// Generate a random password — user never sees it, they use OAuth
 	randBytes := make([]byte, 32)
-	if _, err := bcrypt.GenerateFromPassword(randBytes, bcrypt.DefaultCost); err != nil {
+	if _, err := bcrypt.GenerateFromPassword(randBytes, 12); err != nil {
 		// fallback: hash a placeholder
 		_ = err
 	}

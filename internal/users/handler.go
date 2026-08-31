@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 )
 
 type registerReq struct {
@@ -97,6 +98,10 @@ func handleRegister(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
 		return
 	}
+	if err := validatePasswordStrength(req.Password); err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
 
 	user, err := CreateUser(database.DB, req.Email, req.Password, req.FullName)
 	if err == ErrEmailTaken {
@@ -118,10 +123,22 @@ func handleLogin(c *gin.Context) {
 		return
 	}
 
+	// Brute-force guard key set by LoginBruteForceGuard middleware.
+	guardKey, _ := c.Get("login_guard_key")
+	guardKeyStr, _ := guardKey.(string)
+
 	user, err := Authenticate(database.DB, req.Email, req.Password)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"detail": err.Error()})
+		if guardKeyStr != "" {
+			middleware.RecordLoginFailure(c.Request.Context(), guardKeyStr)
+		}
+		// Constant-time-friendly generic message — never leak whether the
+		// email exists or the password was the wrong part.
+		c.JSON(http.StatusUnauthorized, gin.H{"detail": "Invalid email or password"})
 		return
+	}
+	if guardKeyStr != "" {
+		middleware.RecordLoginSuccess(c.Request.Context(), guardKeyStr)
 	}
 
 	accessToken, err := auth.CreateAccessToken(user.ID)

@@ -4,7 +4,25 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/talkex-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <title>TalkEx Business</title>
+    <style>
+      /* Blank the page while printing — DLP-friendly, blocks screenshot-
+         via-print-to-PDF paths that some corporate laptops still allow. */
+      @media print {
+        body.print-blocked * { visibility: hidden !important; }
+        body.print-blocked::before {
+          content: 'Printing is disabled on this application.';
+          visibility: visible;
+          position: fixed; inset: 0;
+          display: flex; align-items: center; justify-content: center;
+          font: 600 18px/1.5 system-ui, sans-serif; color: #0f172a;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
