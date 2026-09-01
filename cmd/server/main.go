@@ -46,7 +46,9 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/metrics"
 	"github.com/coreaxissoftware/talkex_business/internal/sla"
 	"github.com/coreaxissoftware/talkex_business/internal/otp"
+	"github.com/coreaxissoftware/talkex_business/internal/paylinks"
 	"github.com/coreaxissoftware/talkex_business/internal/payments"
+	"github.com/coreaxissoftware/talkex_business/internal/waflows"
 	"github.com/coreaxissoftware/talkex_business/internal/redisclient"
 
 	// Channel connectors — imported for side-effect init() registration
@@ -129,6 +131,9 @@ func main() {
 		&deals.Pipeline{},
 		&deals.Deal{},
 		&greentick.Application{},
+		&paylinks.PayLink{},
+		&waflows.WAFlow{},
+		&waflows.FlowResponse{},
 		&csat.Rating{},
 		&payments.Order{},
 		&flows.Flow{},
@@ -206,6 +211,9 @@ func main() {
 	catalog.RegisterRoutes(r)
 	deals.RegisterRoutes(r)
 	greentick.RegisterRoutes(r)
+	paylinks.RegisterRoutes(r)
+	waflows.RegisterRoutes(r)
+	contacts.RegisterProfileRoute(r)
 	integrations.RegisterRoutes(r)
 	integrations.RegisterSheetsRoutes(r)
 	analytics.RegisterPDFRoute(r)
