@@ -53,6 +53,26 @@ type Config struct {
 	// Redis so multiple API pods share state. Unset = in-memory (dev
 	// or single-pod deploys).
 	RedisURL string
+
+	// Mailgun — transactional email (OTP delivery, password reset).
+	// Domain must be verified in the Mailgun dashboard.
+	MailgunDomain  string
+	MailgunAPIKey  string
+	MailgunFrom    string // e.g. "TalkEx <no-reply@mail.talkex.in>"
+	MailgunBaseURL string // override for EU region
+
+	// MSG91 — India-first SMS OTP delivery. Cheaper than Twilio on
+	// Indian routes and DLT-native. TemplateID must be pre-registered
+	// on TRAI DLT.
+	Msg91AuthKey    string
+	Msg91TemplateID string
+	Msg91SenderID   string
+	Msg91Route      string // default "4" (transactional)
+
+	// Twilio — global SMS fallback. Only used when MSG91 unconfigured.
+	TwilioAccountSID string
+	TwilioAuthToken  string
+	TwilioFromNumber string
 }
 
 var (
@@ -90,6 +110,20 @@ func Get() *Config {
 			RazorpayWebhookSecret: envOr("RAZORPAY_WEBHOOK_SECRET", ""),
 
 			RedisURL: envOr("REDIS_URL", ""),
+
+			MailgunDomain:  envOr("MAILGUN_DOMAIN", ""),
+			MailgunAPIKey:  envOr("MAILGUN_API_KEY", ""),
+			MailgunFrom:    envOr("MAILGUN_FROM", ""),
+			MailgunBaseURL: envOr("MAILGUN_BASE_URL", ""),
+
+			Msg91AuthKey:    envOr("MSG91_AUTH_KEY", ""),
+			Msg91TemplateID: envOr("MSG91_TEMPLATE_ID", ""),
+			Msg91SenderID:   envOr("MSG91_SENDER_ID", ""),
+			Msg91Route:      envOr("MSG91_ROUTE", ""),
+
+			TwilioAccountSID: envOr("TWILIO_ACCOUNT_SID", ""),
+			TwilioAuthToken:  envOr("TWILIO_AUTH_TOKEN", ""),
+			TwilioFromNumber: envOr("TWILIO_FROM_NUMBER", ""),
 		}
 
 		// Fail loud in non-dev environments if the JWT secret was left at

@@ -122,13 +122,27 @@ func Send(phone, email string) error {
 	return nil
 }
 
+// logDelivery is the real dispatch to Mailgun (email) or MSG91/Twilio
+// (SMS). When credentials aren't configured for the target channel the
+// provider silently degrades to a log line so dev mode still works.
+// Fire-and-forget goroutine so a slow provider never blocks the caller
+// or their rate-limit budget.
 func logDelivery(phone, email, code string) {
-	target := phone
-	if target == "" {
-		target = email
+	sender := pickSender()
+	if phone != "" {
+		go func() {
+			if err := sender.SendSMS(phone, code); err != nil {
+				log.Printf("otp: SMS to %s failed: %v", phone, err)
+			}
+		}()
 	}
-	log.Printf("OTP (dev): %s → %s", target, code)
-	// Production TODO: call SMS gateway (phone) or email provider (email).
+	if email != "" {
+		go func() {
+			if err := sender.SendEmail(email, code); err != nil {
+				log.Printf("otp: email to %s failed: %v", email, err)
+			}
+		}()
+	}
 }
 
 // sendRedis stores the code in Redis using a HASH with (code, attempts,
