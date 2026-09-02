@@ -62,6 +62,7 @@ import (
 	waOnboarding "github.com/coreaxissoftware/talkex_business/internal/channels/whatsapp"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/notifications"
+	"github.com/coreaxissoftware/talkex_business/internal/observability"
 	"github.com/coreaxissoftware/talkex_business/internal/organizations"
 	"github.com/coreaxissoftware/talkex_business/internal/quality"
 	"github.com/coreaxissoftware/talkex_business/internal/settings"
@@ -87,6 +88,9 @@ func main() {
 	// OTP store, and SSE hub switch to shared backends so multiple
 	// API pods see the same state. Nil client = in-memory fallback.
 	redisclient.Init(cfg.RedisURL)
+
+	// Sentry — no-op if SENTRY_DSN is unset.
+	observability.InitSentry()
 
 	// Auto-migrate all domain models
 	if err := database.AutoMigrate(

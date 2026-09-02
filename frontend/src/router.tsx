@@ -1,50 +1,70 @@
+import { Suspense, lazy, type ReactNode } from 'react'
 import { createBrowserRouter } from 'react-router'
 
 import AuthLayout from './layouts/AuthLayout'
 import DashboardLayout from './layouts/DashboardLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 
+// Eagerly-loaded pages: the auth flow + the Dashboard land page are on
+// the critical first paint path — code-splitting them just adds a
+// spinner. Everything else lazy-loads so the initial JS bundle stays
+// under ~150 KB gz.
 import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
-import Dashboard from './pages/Dashboard'
-import Channels from './pages/Channels'
-import Contacts from './pages/Contacts'
-import Templates from './pages/Templates'
-import Campaigns from './pages/Campaigns'
-import Conversations from './pages/Conversations'
-import Automation from './pages/Automation'
-import Developers from './pages/Developers'
-import Webhooks from './pages/Webhooks'
-import Analytics from './pages/Analytics'
-import Logs from './pages/Logs'
-import Billing from './pages/Billing'
-import WalletPage from './pages/WalletPage'
-import Support from './pages/Support'
-import SettingsPage from './pages/SettingsPage'
-import ContactLists from './pages/ContactLists'
-import MediaLibrary from './pages/MediaLibrary'
-import Team from './pages/Team'
-import Tags from './pages/Tags'
-import Compliance from './pages/Compliance'
-import Organizations from './pages/Organizations'
-import ApiDocs from './pages/ApiDocs'
 import OAuthCallback from './pages/OAuthCallback'
-import CannedResponses from './pages/CannedResponses'
-import CsatPage from './pages/CsatPage'
-import BroadcastCalendar from './pages/BroadcastCalendar'
-import Flows from './pages/Flows'
-import LiveChat from './pages/LiveChat'
-import TeamActivity from './pages/TeamActivity'
-import Deals from './pages/Deals'
-import Catalog from './pages/Catalog'
-import GreenTick from './pages/GreenTick'
-import Integrations from './pages/Integrations'
+import Dashboard from './pages/Dashboard'
+
+const Channels = lazy(() => import('./pages/Channels'))
+const Contacts = lazy(() => import('./pages/Contacts'))
+const Templates = lazy(() => import('./pages/Templates'))
+const Campaigns = lazy(() => import('./pages/Campaigns'))
+const Conversations = lazy(() => import('./pages/Conversations'))
+const Automation = lazy(() => import('./pages/Automation'))
+const Developers = lazy(() => import('./pages/Developers'))
+const Webhooks = lazy(() => import('./pages/Webhooks'))
+const Analytics = lazy(() => import('./pages/Analytics'))
+const Logs = lazy(() => import('./pages/Logs'))
+const Billing = lazy(() => import('./pages/Billing'))
+const WalletPage = lazy(() => import('./pages/WalletPage'))
+const Support = lazy(() => import('./pages/Support'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const ContactLists = lazy(() => import('./pages/ContactLists'))
+const MediaLibrary = lazy(() => import('./pages/MediaLibrary'))
+const Team = lazy(() => import('./pages/Team'))
+const Tags = lazy(() => import('./pages/Tags'))
+const Compliance = lazy(() => import('./pages/Compliance'))
+const Organizations = lazy(() => import('./pages/Organizations'))
+const ApiDocs = lazy(() => import('./pages/ApiDocs'))
+const CannedResponses = lazy(() => import('./pages/CannedResponses'))
+const CsatPage = lazy(() => import('./pages/CsatPage'))
+const BroadcastCalendar = lazy(() => import('./pages/BroadcastCalendar'))
+const Flows = lazy(() => import('./pages/Flows'))
+const LiveChat = lazy(() => import('./pages/LiveChat'))
+const TeamActivity = lazy(() => import('./pages/TeamActivity'))
+const Deals = lazy(() => import('./pages/Deals'))
+const Catalog = lazy(() => import('./pages/Catalog'))
+const GreenTick = lazy(() => import('./pages/GreenTick'))
+const Integrations = lazy(() => import('./pages/Integrations'))
+
+// PageFallback — one shared skeleton while a lazy chunk loads. Kept
+// visually quiet so a fast connection barely notices it.
+function PageFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[40vh] text-sm text-gray-400">
+      Loading…
+    </div>
+  )
+}
+
+function withSuspense(node: ReactNode): ReactNode {
+  return <Suspense fallback={<PageFallback />}>{node}</Suspense>
+}
 
 const router = createBrowserRouter([
   {
-    // Public auth pages
+    // Public auth pages — eagerly loaded, no fallback needed.
     element: <AuthLayout />,
     children: [
       { path: '/login', element: <Login /> },
@@ -55,44 +75,44 @@ const router = createBrowserRouter([
     ],
   },
   {
-    // Protected dashboard pages
+    // Protected dashboard pages — lazy-loaded behind Suspense.
     element: <ProtectedRoute />,
     children: [
       {
         element: <DashboardLayout />,
         children: [
           { path: '/', element: <Dashboard /> },
-          { path: '/channels', element: <Channels /> },
-          { path: '/contacts', element: <Contacts /> },
-          { path: '/contact-lists', element: <ContactLists /> },
-          { path: '/templates', element: <Templates /> },
-          { path: '/media', element: <MediaLibrary /> },
-          { path: '/campaigns', element: <Campaigns /> },
-          { path: '/conversations', element: <Conversations /> },
-          { path: '/automation', element: <Automation /> },
-          { path: '/developers', element: <Developers /> },
-          { path: '/webhooks', element: <Webhooks /> },
-          { path: '/analytics', element: <Analytics /> },
-          { path: '/logs', element: <Logs /> },
-          { path: '/billing', element: <Billing /> },
-          { path: '/wallet', element: <WalletPage /> },
-          { path: '/support', element: <Support /> },
-          { path: '/settings', element: <SettingsPage /> },
-          { path: '/team', element: <Team /> },
-          { path: '/tags', element: <Tags /> },
-          { path: '/compliance', element: <Compliance /> },
-          { path: '/organizations', element: <Organizations /> },
-          { path: '/api-docs', element: <ApiDocs /> },
-          { path: '/canned-responses', element: <CannedResponses /> },
-          { path: '/csat', element: <CsatPage /> },
-          { path: '/calendar', element: <BroadcastCalendar /> },
-          { path: '/flows', element: <Flows /> },
-          { path: '/live-chat', element: <LiveChat /> },
-          { path: '/team/activity', element: <TeamActivity /> },
-          { path: '/deals', element: <Deals /> },
-          { path: '/catalog', element: <Catalog /> },
-          { path: '/green-tick', element: <GreenTick /> },
-          { path: '/integrations', element: <Integrations /> },
+          { path: '/channels', element: withSuspense(<Channels />) },
+          { path: '/contacts', element: withSuspense(<Contacts />) },
+          { path: '/contact-lists', element: withSuspense(<ContactLists />) },
+          { path: '/templates', element: withSuspense(<Templates />) },
+          { path: '/media', element: withSuspense(<MediaLibrary />) },
+          { path: '/campaigns', element: withSuspense(<Campaigns />) },
+          { path: '/conversations', element: withSuspense(<Conversations />) },
+          { path: '/automation', element: withSuspense(<Automation />) },
+          { path: '/developers', element: withSuspense(<Developers />) },
+          { path: '/webhooks', element: withSuspense(<Webhooks />) },
+          { path: '/analytics', element: withSuspense(<Analytics />) },
+          { path: '/logs', element: withSuspense(<Logs />) },
+          { path: '/billing', element: withSuspense(<Billing />) },
+          { path: '/wallet', element: withSuspense(<WalletPage />) },
+          { path: '/support', element: withSuspense(<Support />) },
+          { path: '/settings', element: withSuspense(<SettingsPage />) },
+          { path: '/team', element: withSuspense(<Team />) },
+          { path: '/tags', element: withSuspense(<Tags />) },
+          { path: '/compliance', element: withSuspense(<Compliance />) },
+          { path: '/organizations', element: withSuspense(<Organizations />) },
+          { path: '/api-docs', element: withSuspense(<ApiDocs />) },
+          { path: '/canned-responses', element: withSuspense(<CannedResponses />) },
+          { path: '/csat', element: withSuspense(<CsatPage />) },
+          { path: '/calendar', element: withSuspense(<BroadcastCalendar />) },
+          { path: '/flows', element: withSuspense(<Flows />) },
+          { path: '/live-chat', element: withSuspense(<LiveChat />) },
+          { path: '/team/activity', element: withSuspense(<TeamActivity />) },
+          { path: '/deals', element: withSuspense(<Deals />) },
+          { path: '/catalog', element: withSuspense(<Catalog />) },
+          { path: '/green-tick', element: withSuspense(<GreenTick />) },
+          { path: '/integrations', element: withSuspense(<Integrations />) },
         ],
       },
     ],

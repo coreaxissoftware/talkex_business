@@ -36,6 +36,13 @@ type Config struct {
 	OAuthGitHubSecret     string
 	OAuthAppleClientID    string
 	OAuthAppleSecret      string
+	// Apple Sign-in needs a JWT client secret minted from an EC P-256
+	// key rather than a static string. Team ID + Key ID identify the
+	// key registered in the Apple Developer portal; PrivateKeyPEM is
+	// the PEM-encoded contents of the downloaded .p8 file.
+	OAuthAppleTeamID      string
+	OAuthAppleKeyID       string
+	OAuthApplePrivateKey  string
 
 	// Razorpay payment gateway
 	RazorpayKeyID         string
@@ -74,6 +81,9 @@ func Get() *Config {
 			OAuthGitHubSecret:     envOr("OAUTH_GITHUB_SECRET", ""),
 			OAuthAppleClientID:    envOr("OAUTH_APPLE_CLIENT_ID", ""),
 			OAuthAppleSecret:      envOr("OAUTH_APPLE_SECRET", ""),
+			OAuthAppleTeamID:      envOr("OAUTH_APPLE_TEAM_ID", ""),
+			OAuthAppleKeyID:       envOr("OAUTH_APPLE_KEY_ID", ""),
+			OAuthApplePrivateKey:  envOr("OAUTH_APPLE_PRIVATE_KEY", ""),
 
 			RazorpayKeyID:         envOr("RAZORPAY_KEY_ID", ""),
 			RazorpaySecret:        envOr("RAZORPAY_SECRET", ""),

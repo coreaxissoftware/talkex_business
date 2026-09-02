@@ -214,14 +214,19 @@ func handleOAuthCallback(c *gin.Context) {
 		fullName = fmt.Sprintf("Demo %s User", title)
 		log.Printf("OAuth (dev): simulated %s login → email=%s, name=%s", providerName, email, fullName)
 	} else {
-		// Production — exchange code for token, fetch user info
-		// This is where you'd call the provider's token endpoint,
-		// exchange the code, then call the userinfo endpoint.
-		// For now, return an error since real OAuth isn't configured.
-		c.JSON(http.StatusNotImplemented, gin.H{
-			"detail": "Production OAuth code exchange not yet implemented. Configure provider API keys.",
-		})
-		return
+		// Production — real OAuth 2.0 code exchange. Rebuild the exact
+		// redirect_uri we passed to the authorize endpoint; providers
+		// reject the token exchange if it differs by even a slash.
+		redirectURI := fmt.Sprintf("%s/auth/oauth/%s/callback", cfg.BaseURL(), providerName)
+		var err error
+		email, fullName, err = exchangeAndFetchUser(providerName, code, redirectURI)
+		if err != nil {
+			log.Printf("OAuth (%s) exchange failed: %v", providerName, err)
+			c.JSON(http.StatusBadGateway, gin.H{
+				"detail": fmt.Sprintf("Could not complete %s sign-in. Please try again or use email.", providerName),
+			})
+			return
+		}
 	}
 
 	// Find or create user
