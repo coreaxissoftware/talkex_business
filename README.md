@@ -98,7 +98,8 @@ All are optional in dev — the platform runs end-to-end with in-memory dev-mode
 | `META_WHATSAPP_TOKEN` / `META_WHATSAPP_WABA_ID` | WhatsApp Cloud API + template submission | logs payload only |
 | `MAILGUN_DOMAIN` / `MAILGUN_API_KEY` / `MAILGUN_FROM` | OTP + transactional email via Mailgun | logs the code to stdout |
 | `MSG91_AUTH_KEY` / `MSG91_TEMPLATE_ID` / `MSG91_SENDER_ID` | SMS OTP via MSG91 (India, DLT-native) | logs the code to stdout |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | Global SMS fallback when MSG91 unset | logs the code to stdout |
+| `FAST2SMS_API_KEY` / `FAST2SMS_TEMPLATE_ID` / `FAST2SMS_SENDER_ID` / `FAST2SMS_ROUTE` | SMS OTP via Fast2SMS (India). "otp" route works without DLT; "dlt" route needs TemplateID + SenderID | logs the code to stdout |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` / `TWILIO_FROM_NUMBER` | Global SMS fallback when MSG91 + Fast2SMS unset | logs the code to stdout |
 | `OAUTH_APPLE_TEAM_ID` / `OAUTH_APPLE_KEY_ID` / `OAUTH_APPLE_PRIVATE_KEY` | Apple Sign-in JWT client secret (paste .p8 contents) | Sign-in-with-Apple returns 502 |
 | `SENTRY_DSN` | Error tracking — captures panics with stack trace + request context | stderr only |
 

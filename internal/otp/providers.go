@@ -75,14 +75,14 @@ func (m mailgun) SendEmail(to, code string) error {
 	form := url.Values{}
 	form.Set("from", m.from)
 	form.Set("to", to)
-	form.Set("subject", "Your TalkEx verification code")
+	form.Set("subject", "Your verification code")
 	form.Set("text",
-		"Your TalkEx code is "+code+"\n\n"+
+		"Your code is "+code+"\n\n"+
 			"It expires in 10 minutes. If you didn't request this code, ignore this email.\n\n"+
-			"— TalkEx Business")
+			"— CoreAxis")
 	form.Set("html", fmt.Sprintf(
 		`<div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:auto;padding:32px 24px;background:#f7f3ee;border-radius:12px">`+
-			`<h1 style="font-family:Georgia,serif;font-style:italic;color:#0f172a;margin:0 0 8px">TalkEx</h1>`+
+			`<h1 style="font-family:Georgia,serif;font-style:italic;color:#0f172a;margin:0 0 8px">CoreAxis</h1>`+
 			`<p style="color:#334155;margin:0 0 24px">Your verification code:</p>`+
 			`<div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:36px;letter-spacing:8px;background:#fff;padding:20px;border-radius:8px;text-align:center;color:#0ea5a0">%s</div>`+
 			`<p style="color:#64748b;font-size:13px;margin-top:24px">Expires in 10 minutes. If you didn't request this, ignore this email.</p>`+
@@ -173,6 +173,106 @@ func (m msg91) SendSMS(to, code string) error {
 
 func (msg91) SendEmail(_, _ string) error { return nil }
 
+// --- SMS: Fast2SMS (India, DLT + non-DLT OTP route) -----------------
+
+type fast2sms struct {
+	apiKey     string
+	senderID   string
+	templateID string // DLT message ID; empty = use non-DLT "otp" route
+	route      string // "dlt" | "otp" | "q"
+}
+
+// SendSMS routes through Fast2SMS. Two modes:
+//
+//   1. DLT (recommended once you have a template approved):
+//        route=dlt + sender_id + message=<templateID> + variables_values=<code>
+//   2. Non-DLT "otp" route (works out of the box, uses Fast2SMS's own
+//      pre-approved template "Your OTP: {#var#}"):
+//        route=otp + variables_values=<code>
+//
+// Which mode fires depends on whether FAST2SMS_TEMPLATE_ID is set.
+func (f fast2sms) SendSMS(to, code string) error {
+	if to == "" {
+		return nil
+	}
+	// Fast2SMS wants 10-digit numbers (no +91 prefix, no country code)
+	// for domestic India delivery.
+	num := stripToIndian10(to)
+	if num == "" {
+		return fmt.Errorf("fast2sms: could not derive a 10-digit Indian number from %q", to)
+	}
+
+	form := url.Values{}
+	form.Set("variables_values", code)
+	form.Set("numbers", num)
+	form.Set("flash", "0")
+
+	switch f.route {
+	case "dlt":
+		if f.templateID == "" || f.senderID == "" {
+			return fmt.Errorf("fast2sms: dlt route needs FAST2SMS_TEMPLATE_ID + FAST2SMS_SENDER_ID")
+		}
+		form.Set("route", "dlt")
+		form.Set("sender_id", f.senderID)
+		form.Set("message", f.templateID) // DLT template ID goes in the 'message' field
+	case "q":
+		// Bulk/quick route — uses Fast2SMS's shared sender IDs.
+		form.Set("route", "q")
+		form.Set("message", "Your OTP is "+code+". Valid for 10 minutes. Do not share. - CoreAxis")
+	default:
+		// Default "otp" route — Fast2SMS-owned template, no DLT needed.
+		// Payload only carries the code as variables_values.
+		form.Set("route", "otp")
+	}
+
+	req, err := http.NewRequest(
+		http.MethodPost,
+		"https://www.fast2sms.com/dev/bulkV2",
+		strings.NewReader(form.Encode()),
+	)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("authorization", f.apiKey)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{Timeout: 8 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode >= 400 {
+		return fmt.Errorf("fast2sms: HTTP %d", res.StatusCode)
+	}
+	// Fast2SMS returns 200 even on failure ("return":false) — parse
+	// the body so a mis-routed code doesn't silently succeed.
+	var out struct {
+		Return  bool   `json:"return"`
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&out); err == nil && !out.Return {
+		return fmt.Errorf("fast2sms: %s", out.Message)
+	}
+	return nil
+}
+
+func (fast2sms) SendEmail(_, _ string) error { return nil }
+
+// stripToIndian10 turns any of "9876543210", "+919876543210",
+// "919876543210", "+91 9876-543210" into the bare 10-digit trailing
+// number Fast2SMS accepts. Returns "" when the result isn't 10 digits.
+func stripToIndian10(p string) string {
+	// Reuse the E.164 normaliser then strip country prefix.
+	e164 := normalisePhone(p)
+	if strings.HasPrefix(e164, "+91") && len(e164) == 13 {
+		return e164[3:]
+	}
+	// If not an Indian number, refuse — Fast2SMS won't deliver it anyway.
+	return ""
+}
+
 type twilioSMS struct {
 	accountSID string
 	authToken  string
@@ -186,7 +286,7 @@ func (t twilioSMS) SendSMS(to, code string) error {
 	form := url.Values{}
 	form.Set("From", t.fromNumber)
 	form.Set("To", normalisePhone(to))
-	form.Set("Body", "Your TalkEx verification code is "+code+". Valid for 10 minutes.")
+	form.Set("Body", "Your verification code is "+code+". Valid for 10 minutes. - CoreAxis")
 
 	endpoint := fmt.Sprintf("https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json", t.accountSID)
 	req, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(form.Encode()))
@@ -210,8 +310,19 @@ func (t twilioSMS) SendSMS(to, code string) error {
 
 func (twilioSMS) SendEmail(_, _ string) error { return nil }
 
+// Priority order (first match wins) — decision made per call so a
+// runtime secret flip works without a process restart:
+//
+//   1. MSG91          — cheapest India route, DLT-native, requires
+//                       full DLT registration
+//   2. Fast2SMS       — India-first, supports non-DLT "otp" route out
+//                       of the box (fastest to go live), upgrades to
+//                       DLT when a template ID is added
+//   3. Twilio         — global fallback, higher per-SMS cost
+//   4. logOnly        — dev
+//
+// A tenant can force a specific provider by unsetting the others.
 func pickSMS(cfg *config.Config) deliverySender {
-	// MSG91 wins when configured — cheaper on Indian routes, DLT-native.
 	if cfg.Msg91AuthKey != "" && cfg.Msg91TemplateID != "" {
 		route := cfg.Msg91Route
 		if route == "" {
@@ -221,6 +332,24 @@ func pickSMS(cfg *config.Config) deliverySender {
 			authKey:    cfg.Msg91AuthKey,
 			templateID: cfg.Msg91TemplateID,
 			senderID:   cfg.Msg91SenderID,
+			route:      route,
+		}
+	}
+	if cfg.Fast2SMSAPIKey != "" {
+		route := cfg.Fast2SMSRoute
+		if route == "" {
+			// If a DLT template ID is present, default to DLT; else
+			// use Fast2SMS's built-in "otp" route (no DLT required).
+			if cfg.Fast2SMSTemplateID != "" && cfg.Fast2SMSSenderID != "" {
+				route = "dlt"
+			} else {
+				route = "otp"
+			}
+		}
+		return fast2sms{
+			apiKey:     cfg.Fast2SMSAPIKey,
+			senderID:   cfg.Fast2SMSSenderID,
+			templateID: cfg.Fast2SMSTemplateID,
 			route:      route,
 		}
 	}

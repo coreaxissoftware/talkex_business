@@ -69,7 +69,16 @@ type Config struct {
 	Msg91SenderID   string
 	Msg91Route      string // default "4" (transactional)
 
-	// Twilio — global SMS fallback. Only used when MSG91 unconfigured.
+	// Fast2SMS — India SMS. Supports two routes: the built-in "otp"
+	// route works without DLT registration (fastest to go live);
+	// setting a TemplateID + SenderID switches to the "dlt" route.
+	Fast2SMSAPIKey     string
+	Fast2SMSSenderID   string
+	Fast2SMSTemplateID string
+	Fast2SMSRoute      string // "dlt" | "otp" | "q"; auto-picked when empty
+
+	// Twilio — global SMS fallback. Only used when MSG91 + Fast2SMS
+	// are both unconfigured.
 	TwilioAccountSID string
 	TwilioAuthToken  string
 	TwilioFromNumber string
@@ -120,6 +129,11 @@ func Get() *Config {
 			Msg91TemplateID: envOr("MSG91_TEMPLATE_ID", ""),
 			Msg91SenderID:   envOr("MSG91_SENDER_ID", ""),
 			Msg91Route:      envOr("MSG91_ROUTE", ""),
+
+			Fast2SMSAPIKey:     envOr("FAST2SMS_API_KEY", ""),
+			Fast2SMSSenderID:   envOr("FAST2SMS_SENDER_ID", ""),
+			Fast2SMSTemplateID: envOr("FAST2SMS_TEMPLATE_ID", ""),
+			Fast2SMSRoute:      envOr("FAST2SMS_ROUTE", ""),
 
 			TwilioAccountSID: envOr("TWILIO_ACCOUNT_SID", ""),
 			TwilioAuthToken:  envOr("TWILIO_AUTH_TOKEN", ""),
