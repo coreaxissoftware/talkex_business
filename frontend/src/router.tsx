@@ -47,6 +47,8 @@ const Deals = lazy(() => import('./pages/Deals'))
 const Catalog = lazy(() => import('./pages/Catalog'))
 const GreenTick = lazy(() => import('./pages/GreenTick'))
 const Integrations = lazy(() => import('./pages/Integrations'))
+const WhiteLabel = lazy(() => import('./pages/WhiteLabel'))
+const Reseller = lazy(() => import('./pages/Reseller'))
 
 // PageFallback — one shared skeleton while a lazy chunk loads. Kept
 // visually quiet so a fast connection barely notices it.
@@ -113,6 +115,8 @@ const router = createBrowserRouter([
           { path: '/catalog', element: withSuspense(<Catalog />) },
           { path: '/green-tick', element: withSuspense(<GreenTick />) },
           { path: '/integrations', element: withSuspense(<Integrations />) },
+          { path: '/white-label', element: withSuspense(<WhiteLabel />) },
+          { path: '/reseller', element: withSuspense(<Reseller />) },
         ],
       },
     ],

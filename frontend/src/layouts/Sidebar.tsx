@@ -31,6 +31,8 @@ import {
   ShoppingBag,
   BadgeCheck,
   Plug,
+  Palette,
+  TrendingUp,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -66,6 +68,13 @@ const navGroups = [
       { to: '/deals', icon: Briefcase, label: 'Deals' },
       { to: '/green-tick', icon: BadgeCheck, label: 'Green Tick' },
       { to: '/integrations', icon: Plug, label: 'Integrations' },
+    ],
+  },
+  {
+    label: 'Reseller',
+    items: [
+      { to: '/reseller', icon: TrendingUp, label: 'Margin dashboard' },
+      { to: '/white-label', icon: Palette, label: 'White-label' },
     ],
   },
   {
