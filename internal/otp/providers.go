@@ -75,17 +75,18 @@ func (m mailgun) SendEmail(to, code string) error {
 	form := url.Values{}
 	form.Set("from", m.from)
 	form.Set("to", to)
-	form.Set("subject", "Your verification code")
+	form.Set("subject", "Your TalkEx Business OTP")
 	form.Set("text",
-		"Your code is "+code+"\n\n"+
-			"It expires in 10 minutes. If you didn't request this code, ignore this email.\n\n"+
-			"— CoreAxis")
+		code+" is your TalkEx Business OTP. Valid for 10 minutes. "+
+			"Do not share this code with anyone.\n\n"+
+			"— CoreAxis Ventures")
 	form.Set("html", fmt.Sprintf(
 		`<div style="font-family:system-ui,-apple-system,sans-serif;max-width:480px;margin:auto;padding:32px 24px;background:#f7f3ee;border-radius:12px">`+
-			`<h1 style="font-family:Georgia,serif;font-style:italic;color:#0f172a;margin:0 0 8px">CoreAxis</h1>`+
+			`<h1 style="font-family:Georgia,serif;font-style:italic;color:#0f172a;margin:0 0 8px">TalkEx Business</h1>`+
 			`<p style="color:#334155;margin:0 0 24px">Your verification code:</p>`+
 			`<div style="font-family:'JetBrains Mono',ui-monospace,monospace;font-size:36px;letter-spacing:8px;background:#fff;padding:20px;border-radius:8px;text-align:center;color:#0ea5a0">%s</div>`+
-			`<p style="color:#64748b;font-size:13px;margin-top:24px">Expires in 10 minutes. If you didn't request this, ignore this email.</p>`+
+			`<p style="color:#334155;font-size:14px;margin-top:24px">Valid for 10 minutes. Do not share this code with anyone.</p>`+
+			`<p style="color:#64748b;font-size:12px;margin-top:16px;padding-top:16px;border-top:1px solid rgba(15,23,42,0.09)">— CoreAxis Ventures</p>`+
 			`</div>`, code))
 
 	// Mailgun US region URL. EU tenants set MAILGUN_BASE_URL to
@@ -218,7 +219,7 @@ func (f fast2sms) SendSMS(to, code string) error {
 	case "q":
 		// Bulk/quick route — uses Fast2SMS's shared sender IDs.
 		form.Set("route", "q")
-		form.Set("message", "Your OTP is "+code+". Valid for 10 minutes. Do not share. - CoreAxis")
+		form.Set("message", code+" is your TalkEx Business OTP. Valid for 10 minutes. Do not share this code with anyone. - CoreAxis Ventures")
 	default:
 		// Default "otp" route — Fast2SMS-owned template, no DLT needed.
 		// Payload only carries the code as variables_values.
@@ -286,7 +287,7 @@ func (t twilioSMS) SendSMS(to, code string) error {
 	form := url.Values{}
 	form.Set("From", t.fromNumber)
 	form.Set("To", normalisePhone(to))
-	form.Set("Body", "Your verification code is "+code+". Valid for 10 minutes. - CoreAxis")
+	form.Set("Body", code+" is your TalkEx Business OTP. Valid for 10 minutes. Do not share this code with anyone. - CoreAxis Ventures")
 
 	endpoint := fmt.Sprintf("https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json", t.accountSID)
 	req, err := http.NewRequest(http.MethodPost, endpoint, strings.NewReader(form.Encode()))
