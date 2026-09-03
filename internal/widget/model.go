@@ -15,6 +15,10 @@ import (
 
 // Config is the per-owner widget configuration — public key, greeting,
 // theme color. One row per owner (enforced by unique index on OwnerID).
+// TableName pins to `widget_configs` — collides with channels.Config's
+// GORM default plural (`configs`) otherwise; see internal/channels/model.go.
+func (Config) TableName() string { return "widget_configs" }
+
 type Config struct {
 	database.Base
 	OwnerID     string `gorm:"type:varchar(36);uniqueIndex;not null" json:"owner_id"`

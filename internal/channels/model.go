@@ -50,3 +50,8 @@ type Config struct {
 	Config     datatypes.JSON `gorm:"type:json;default:'{}'" json:"config"`
 	VerifiedAt *time.Time     `json:"verified_at"`
 }
+
+// TableName pins to `channel_configs` — GORM's default plural of the
+// struct name (`configs`) collides with widget.Config which also
+// defaults to `configs`. Explicit table name kills the collision.
+func (Config) TableName() string { return "channel_configs" }
