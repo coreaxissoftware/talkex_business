@@ -13,6 +13,9 @@ import {
   ChevronRight,
   CheckCircle2,
   Loader2,
+  Key,
+  Copy,
+  Sparkles,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import QualityBadge from '../components/QualityBadge'
@@ -53,6 +56,61 @@ export default function Channels() {
   const [loading, setLoading] = useState(true)
   const [busyKind, setBusyKind] = useState<ChannelKind | null>(null)
   const [error, setError] = useState('')
+
+  // TalkEx key mint modal
+  const [showTalkExKey, setShowTalkExKey] = useState(false)
+  const [txUsername, setTxUsername] = useState('')
+  const [txPassword, setTxPassword] = useState('')
+  const [txLabel, setTxLabel] = useState('TalkEx Business bridge')
+  const [txPin, setTxPin] = useState('')
+  const [txPendingToken, setTxPendingToken] = useState('')
+  const [txMinting, setTxMinting] = useState(false)
+  const [txError, setTxError] = useState('')
+  const [txResultKey, setTxResultKey] = useState('')
+  const [txResultPrefix, setTxResultPrefix] = useState('')
+  const [txCopied, setTxCopied] = useState(false)
+
+  const resetTalkExKeyModal = () => {
+    setTxUsername('')
+    setTxPassword('')
+    setTxLabel('TalkEx Business bridge')
+    setTxPin('')
+    setTxPendingToken('')
+    setTxError('')
+    setTxResultKey('')
+    setTxResultPrefix('')
+    setTxCopied(false)
+    setTxMinting(false)
+  }
+
+  const mintTalkExKey = async () => {
+    setTxMinting(true)
+    setTxError('')
+    try {
+      const res = await channelsService.generateTalkExKey({
+        talkex_username: txUsername,
+        talkex_password: txPassword,
+        label: txLabel,
+        pin: txPin || undefined,
+        pending_token: txPendingToken || undefined,
+      })
+      if (res.requires_pin && res.pending_token) {
+        setTxPendingToken(res.pending_token)
+        setTxError('This account has two-step verification on. Enter your 6-digit PIN.')
+        return
+      }
+      if (res.key) {
+        setTxResultKey(res.key)
+        setTxResultPrefix(res.prefix || '')
+        // Refresh the channel list so the enabled toggle + saved key reflect.
+        await load()
+      }
+    } catch (err: any) {
+      setTxError(err.response?.data?.detail || 'Could not generate key.')
+    } finally {
+      setTxMinting(false)
+    }
+  }
 
   // WhatsApp onboarding wizard
   const [showWAWizard, setShowWAWizard] = useState(false)
@@ -193,6 +251,18 @@ export default function Channels() {
                   <p className="mt-2 text-[10px] text-gray-400 text-center">
                     Verified {new Date(cfg.verified_at).toLocaleDateString('en-IN')}
                   </p>
+                )}
+
+                {item.kind === 'talkex' && (
+                  <button
+                    onClick={() => {
+                      resetTalkExKeyModal()
+                      setShowTalkExKey(true)
+                    }}
+                    className="mt-2 w-full rounded-lg border border-blue-300 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
+                  >
+                    <Sparkles size={12} /> Generate TalkEx key
+                  </button>
                 )}
 
                 {item.kind === 'whatsapp' && enabled && (
@@ -406,6 +476,181 @@ export default function Channels() {
           </div>
         ) : (
           <p className="text-sm text-gray-500 py-4">Could not load onboarding data.</p>
+        )}
+      </Modal>
+
+      {/* TalkEx key mint modal */}
+      <Modal
+        open={showTalkExKey}
+        onClose={() => {
+          setShowTalkExKey(false)
+          resetTalkExKeyModal()
+        }}
+        title="Generate TalkEx API key"
+      >
+        {txResultKey ? (
+          <div className="py-2">
+            <div className="mb-4 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 flex items-start gap-2">
+              <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold">Key generated and saved.</p>
+                <p className="text-xs mt-0.5">
+                  Copy it below — TalkEx never shows this key again. It's already
+                  wired into your TalkEx channel config.
+                </p>
+              </div>
+            </div>
+
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Bulk API key
+            </label>
+            <div className="flex gap-2 mb-4">
+              <input
+                readOnly
+                value={txResultKey}
+                onFocus={(e) => e.currentTarget.select()}
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono bg-gray-50"
+              />
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(txResultKey)
+                    setTxCopied(true)
+                    setTimeout(() => setTxCopied(false), 2000)
+                  } catch {
+                    // Some browsers refuse without user gesture; fall
+                    // back to the manual copy the input allows.
+                  }
+                }}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium hover:bg-gray-100 flex items-center gap-1"
+              >
+                <Copy size={12} /> {txCopied ? 'Copied!' : 'Copy'}
+              </button>
+            </div>
+
+            {txResultPrefix && (
+              <p className="text-xs text-gray-500 mb-4">
+                Prefix <code className="bg-gray-100 px-1 rounded">{txResultPrefix}</code> —
+                stored on TalkEx so you can identify this key later.
+              </p>
+            )}
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => {
+                  setShowTalkExKey(false)
+                  resetTalkExKeyModal()
+                }}
+                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="py-2">
+            <p className="text-sm text-gray-600 mb-4">
+              Sign in with your TalkEx account credentials.{' '}
+              <span className="text-gray-500">
+                Your password is never stored — used once to mint a bulk-sending
+                API key that we save into your TalkEx channel config.
+              </span>
+            </p>
+
+            {txError && (
+              <div className="mb-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-700">
+                {txError}
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  TalkEx username
+                </label>
+                <input
+                  autoFocus
+                  autoComplete="username"
+                  value={txUsername}
+                  onChange={(e) => setTxUsername(e.target.value)}
+                  disabled={!!txPendingToken}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:bg-gray-50"
+                  placeholder="e.g. yourbusiness"
+                />
+              </div>
+
+              {!txPendingToken && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    TalkEx password
+                  </label>
+                  <input
+                    type="password"
+                    autoComplete="current-password"
+                    value={txPassword}
+                    onChange={(e) => setTxPassword(e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20"
+                  />
+                </div>
+              )}
+
+              {txPendingToken && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Two-step PIN
+                  </label>
+                  <input
+                    autoFocus
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={txPin}
+                    onChange={(e) => setTxPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 font-mono tracking-widest text-center"
+                    placeholder="••••••"
+                    maxLength={6}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">
+                  Key label <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  value={txLabel}
+                  onChange={(e) => setTxLabel(e.target.value)}
+                  disabled={!!txPendingToken}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 disabled:bg-gray-50"
+                  placeholder="TalkEx Business bridge"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 mt-5">
+              <button
+                onClick={() => {
+                  setShowTalkExKey(false)
+                  resetTalkExKeyModal()
+                }}
+                className="px-4 py-2 text-sm rounded-lg text-gray-600 hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={mintTalkExKey}
+                disabled={
+                  txMinting ||
+                  !txUsername ||
+                  (!txPendingToken && !txPassword) ||
+                  (!!txPendingToken && txPin.length < 4)
+                }
+                className="px-4 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-primary-700 font-semibold disabled:opacity-50 flex items-center gap-1"
+              >
+                {txMinting ? <Loader2 size={13} className="animate-spin" /> : <Key size={13} />}
+                {txPendingToken ? 'Verify PIN & generate' : 'Generate key'}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>
