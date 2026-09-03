@@ -60,7 +60,7 @@ import (
 	_ "github.com/coreaxissoftware/talkex_business/internal/channels/rcs"
 	_ "github.com/coreaxissoftware/talkex_business/internal/channels/sandbox"
 	_ "github.com/coreaxissoftware/talkex_business/internal/channels/telegram"
-	_ "github.com/coreaxissoftware/talkex_business/internal/channels/talkex"
+	talkexChan "github.com/coreaxissoftware/talkex_business/internal/channels/talkex"
 	waOnboarding "github.com/coreaxissoftware/talkex_business/internal/channels/whatsapp"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
 	"github.com/coreaxissoftware/talkex_business/internal/notifications"
@@ -835,6 +835,63 @@ func main() {
 		}
 		return name, out, nil
 	})
+
+	// TalkEx inbound poller wires — hits GET /api/v1/inbound on the TalkEx
+	// Messenger backend every 30s per enabled tenant, bridges replies into
+	// conversations.RecordInbound so they show up in the Conversations
+	// inbox alongside every other channel.
+	talkexChan.RegisterContactUpserter(func(ownerID, username string) (string, error) {
+		// Look up by (owner_id, phone_number = "talkex:<username>") which
+		// mirrors the widget's synthetic-id trick and reuses the same
+		// unique index without a schema change. Creates on miss so a
+		// customer messaging us for the first time isn't dropped.
+		phone := "talkex:" + username
+		var existing contacts.Contact
+		err := database.DB.Where("owner_id = ? AND phone_number = ?", ownerID, phone).First(&existing).Error
+		if err == nil {
+			return existing.ID, nil
+		}
+		name := username
+		in := &contacts.CreateInput{
+			PhoneNumber: phone,
+			Name:        &name,
+			Tags:        []string{"talkex"},
+		}
+		c, err := contacts.Create(database.DB, ownerID, in)
+		if err != nil {
+			return "", err
+		}
+		return c.ID, nil
+	})
+	talkexChan.RegisterInboundRecorder(func(ownerID, contactID, channel, body string) error {
+		_, _, err := conversations.RecordInbound(database.DB, ownerID, &conversations.InboundInput{
+			ContactID: contactID,
+			Channel:   channel,
+			Body:      body,
+		})
+		return err
+	})
+	talkexChan.RegisterChannelLister(func() []talkexChan.ChannelBinding {
+		// Enumerate every enabled TalkEx channel row; the poller then
+		// fans out per tenant. Called every pollInterval, so we keep it
+		// small — a single SELECT, no join.
+		var rows []channels.Config
+		if err := database.DB.Where("kind = ? AND enabled = ?", channels.KindTalkEx, true).Find(&rows).Error; err != nil {
+			return nil
+		}
+		out := make([]talkexChan.ChannelBinding, 0, len(rows))
+		for _, r := range rows {
+			cfg := map[string]string{}
+			_ = json.Unmarshal(r.Config, &cfg)
+			out = append(out, talkexChan.ChannelBinding{
+				OwnerID: r.OwnerID,
+				BaseURL: cfg["base_url"],
+				APIKey:  cfg["api_key"],
+			})
+		}
+		return out
+	})
+	talkexChan.StartPoller(database.DB)
 
 	// Background campaign scheduler — auto-launches campaigns when scheduled_at arrives
 	campaigns.StartScheduler(database.DB)
