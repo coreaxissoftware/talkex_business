@@ -8,6 +8,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 )
 
@@ -57,7 +58,7 @@ func handlePublicBranding(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.Header("Cache-Control", "public, max-age=60")
@@ -77,7 +78,7 @@ func handleGet(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, &b)
@@ -101,14 +102,14 @@ func handleUpdate(c *gin.Context) {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		in.OwnerID = ownerID
 		if err := database.DB.Create(&in).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+			apihelpers.ServerError(c, err, "internal")
 			return
 		}
 		c.JSON(http.StatusCreated, &in)
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 
@@ -117,7 +118,7 @@ func handleUpdate(c *gin.Context) {
 	in.OwnerID = ownerID
 	in.CreatedAt = existing.CreatedAt
 	if err := database.DB.Save(&in).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, &in)

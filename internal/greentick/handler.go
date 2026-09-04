@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 )
 
@@ -42,7 +43,7 @@ func getOrCreate(ownerID string) (*Application, error) {
 func handleGet(c *gin.Context) {
 	a, err := getOrCreate(auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"application": a, "progress": a.Progress()})
@@ -51,7 +52,7 @@ func handleGet(c *gin.Context) {
 func handleUpdate(c *gin.Context) {
 	a, err := getOrCreate(auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	var in struct {
@@ -88,7 +89,7 @@ func handleUpdate(c *gin.Context) {
 		a.Status = StatusInProgress
 	}
 	if err := database.DB.Save(a).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"application": a, "progress": a.Progress()})
@@ -97,7 +98,7 @@ func handleUpdate(c *gin.Context) {
 func handleSubmit(c *gin.Context) {
 	a, err := getOrCreate(auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	if a.Progress() < 1.0 {
@@ -113,7 +114,7 @@ func handleSubmit(c *gin.Context) {
 	a.SubmittedAt = &now
 	a.MetaCaseID = body.MetaCaseID
 	if err := database.DB.Save(a).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, a)
@@ -122,7 +123,7 @@ func handleSubmit(c *gin.Context) {
 func handleDecision(c *gin.Context) {
 	a, err := getOrCreate(auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	var body struct {
@@ -142,7 +143,7 @@ func handleDecision(c *gin.Context) {
 	}
 	a.DecidedAt = &now
 	if err := database.DB.Save(a).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, a)

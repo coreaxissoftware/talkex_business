@@ -9,6 +9,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 )
 
@@ -68,7 +69,7 @@ func handleProfile(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 

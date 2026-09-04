@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 )
 
@@ -38,7 +39,7 @@ func handleList(c *gin.Context) {
 	var items []WAFlow
 	if err := database.DB.Where("owner_id = ?", ownerID).
 		Order("created_at DESC").Find(&items).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -52,7 +53,7 @@ func handleGet(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, f)
@@ -98,7 +99,7 @@ func handleCreate(c *gin.Context) {
 		Endpoint: in.Endpoint,
 	}
 	if err := database.DB.Create(&f).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusCreated, f)
@@ -119,7 +120,7 @@ func handleUpdate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	// Editing a published flow forces a version bump so previous sends
@@ -147,7 +148,7 @@ func handleUpdate(c *gin.Context) {
 		f.Endpoint = *in.Endpoint
 	}
 	if err := database.DB.Save(&f).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, f)
@@ -163,7 +164,7 @@ func handlePublish(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	// Deferred: Meta Graph API call. For now stamp status + a synthetic
@@ -175,7 +176,7 @@ func handlePublish(c *gin.Context) {
 		f.MetaFlowID = "sim-" + f.ID
 	}
 	if err := database.DB.Save(&f).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, f)
@@ -186,7 +187,7 @@ func handleListResponses(c *gin.Context) {
 	var out []FlowResponse
 	if err := database.DB.Where("owner_id = ? AND flow_id = ?", ownerID, c.Param("id")).
 		Order("created_at DESC").Limit(200).Find(&out).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, out)
@@ -224,7 +225,7 @@ func handleInbound(c *gin.Context) {
 	}
 	if err := database.DB.Create(&resp).Error; err != nil {
 		log.Printf("waflows: inbound persist failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"status": "received"})

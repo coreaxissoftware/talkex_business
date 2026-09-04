@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 )
 
@@ -25,7 +26,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	items, err := List(database.DB, auth.GetUserID(c), c.Query("category"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -38,7 +39,7 @@ func handleGet(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, p)
@@ -68,7 +69,7 @@ func handleUpdate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	var in UpdateInput
@@ -77,7 +78,7 @@ func handleUpdate(c *gin.Context) {
 		return
 	}
 	if err := Update(database.DB, p, &in); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusOK, p)
@@ -90,11 +91,11 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	if err := Delete(database.DB, p); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "internal")
 		return
 	}
 	c.JSON(http.StatusNoContent, nil)
