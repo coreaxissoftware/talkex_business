@@ -841,21 +841,25 @@ func main() {
 	// conversations.RecordInbound so they show up in the Conversations
 	// inbox alongside every other channel.
 	talkexChan.RegisterContactUpserter(func(ownerID, username string) (string, error) {
-		// Look up by (owner_id, phone_number = "talkex:<username>") which
-		// mirrors the widget's synthetic-id trick and reuses the same
-		// unique index without a schema change. Creates on miss so a
-		// customer messaging us for the first time isn't dropped.
-		phone := "talkex:" + username
+		// Look up by (owner_id, talkex_username). Missing → create a
+		// lightweight contact with just the username on file; the
+		// merchant fills in phone / name from the Customer 360 drawer
+		// when they onboard the lead.
 		var existing contacts.Contact
-		err := database.DB.Where("owner_id = ? AND phone_number = ?", ownerID, phone).First(&existing).Error
+		err := database.DB.Where("owner_id = ? AND talkex_username = ?", ownerID, username).First(&existing).Error
 		if err == nil {
 			return existing.ID, nil
 		}
 		name := username
+		// Synthetic phone_number to satisfy the (owner_id,phone_number)
+		// unique index — customers who only exist on TalkEx don't have
+		// a phone we know. Merchant can overwrite this from the UI.
+		phone := "talkex:" + username
 		in := &contacts.CreateInput{
-			PhoneNumber: phone,
-			Name:        &name,
-			Tags:        []string{"talkex"},
+			PhoneNumber:    phone,
+			Name:           &name,
+			TalkExUsername: &username,
+			Tags:           []string{"talkex"},
 		}
 		c, err := contacts.Create(database.DB, ownerID, in)
 		if err != nil {

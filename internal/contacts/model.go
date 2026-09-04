@@ -28,6 +28,12 @@ type Contact struct {
 	OptedInAt       *time.Time      `json:"opted_in_at"`
 	LastInboundAt   *time.Time      `json:"last_inbound_at"`
 	FallbackChannel *string         `gorm:"type:varchar(50)" json:"fallback_channel"`
+	// TalkExUsername — the customer's handle on TalkEx (web.talkex.in).
+	// TalkEx addresses by username, not phone, so we store it as its
+	// own column rather than folding it into phone_number as
+	// "talkex:<username>" (the earlier hack the poller used).
+	TalkExUsername *string `gorm:"type:varchar(80);index" json:"talkex_username"`
+
 	// LifecycleStage — computed by contacts.RefreshLifecycle: new / active
 	// / dormant / churned. Drives the funnel report on the Contacts page.
 	LifecycleStage  string          `gorm:"type:varchar(20);default:'new';index" json:"lifecycle_stage"`

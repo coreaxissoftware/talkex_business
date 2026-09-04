@@ -70,11 +70,12 @@ func GetByID(db *gorm.DB, ownerID, contactID string) (*Contact, error) {
 }
 
 type CreateInput struct {
-	PhoneNumber  string      `json:"phone_number" binding:"required"`
-	Name         *string     `json:"name"`
-	Email        *string     `json:"email"`
-	Tags         []string    `json:"tags"`
-	CustomFields map[string]interface{} `json:"custom_fields"`
+	PhoneNumber    string                 `json:"phone_number" binding:"required"`
+	Name           *string                `json:"name"`
+	Email          *string                `json:"email"`
+	TalkExUsername *string                `json:"talkex_username"`
+	Tags           []string               `json:"tags"`
+	CustomFields   map[string]interface{} `json:"custom_fields"`
 }
 
 func Create(db *gorm.DB, ownerID string, in *CreateInput) (*Contact, error) {
@@ -88,12 +89,13 @@ func Create(db *gorm.DB, ownerID string, in *CreateInput) (*Contact, error) {
 	}
 
 	c := &Contact{
-		OwnerID:      ownerID,
-		PhoneNumber:  in.PhoneNumber,
-		Name:         in.Name,
-		Email:        in.Email,
-		Tags:         tagsJSON,
-		CustomFields: fieldsJSON,
+		OwnerID:        ownerID,
+		PhoneNumber:    in.PhoneNumber,
+		Name:           in.Name,
+		Email:          in.Email,
+		TalkExUsername: in.TalkExUsername,
+		Tags:           tagsJSON,
+		CustomFields:   fieldsJSON,
 	}
 	if err := db.Create(c).Error; err != nil {
 		return nil, err

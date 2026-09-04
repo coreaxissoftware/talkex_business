@@ -33,6 +33,7 @@ import {
   Plug,
   Palette,
   TrendingUp,
+  CreditCard as CreditCardIcon,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -66,6 +67,7 @@ const navGroups = [
     label: 'Sales & CRM',
     items: [
       { to: '/deals', icon: Briefcase, label: 'Deals' },
+      { to: '/pay-links', icon: CreditCardIcon, label: 'Payment links' },
       { to: '/green-tick', icon: BadgeCheck, label: 'Green Tick' },
       { to: '/integrations', icon: Plug, label: 'Integrations' },
     ],
