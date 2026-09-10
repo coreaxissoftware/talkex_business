@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/coreaxissoftware/talkex_business/internal/observability"
 )
 
 // SendFn sends an outbound message. Injected by main.go so this package
@@ -278,7 +280,9 @@ func StartSweeper(db *gorm.DB, interval time.Duration) {
 		t := time.NewTicker(interval)
 		defer t.Stop()
 		for range t.C {
-			SweepWaiting(db)
+			observability.Safely("flows sweeper tick", func() {
+				SweepWaiting(db)
+			})
 		}
 	}()
 }

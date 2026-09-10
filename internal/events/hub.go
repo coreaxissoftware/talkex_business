@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/coreaxissoftware/talkex_business/internal/observability"
 	"github.com/coreaxissoftware/talkex_business/internal/redisclient"
 )
 
@@ -146,12 +147,17 @@ func StartRedisFanout() {
 		defer ps.Close()
 		ch := ps.Channel()
 		for msg := range ch {
-			var env envelope
-			if err := json.Unmarshal([]byte(msg.Payload), &env); err != nil {
-				log.Printf("events: bad Redis payload: %v", err)
-				continue
-			}
-			dispatchLocal(env.OwnerID, env.Type, env.Data)
+			// Per-message recover so a bad payload / broken subscriber
+			// can never wedge the fan-out for every other tenant.
+			m := msg
+			observability.Safely("events redis fanout msg", func() {
+				var env envelope
+				if err := json.Unmarshal([]byte(m.Payload), &env); err != nil {
+					log.Printf("events: bad Redis payload: %v", err)
+					return
+				}
+				dispatchLocal(env.OwnerID, env.Type, env.Data)
+			})
 		}
 	}()
 }

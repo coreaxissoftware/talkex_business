@@ -71,6 +71,11 @@ func handleBulkApply(c *gin.Context) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
 		return
 	}
+	// Cap the array so a malformed / malicious call can't OOM the process.
+	if len(in.ContactIDs) > 5000 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "too many contact_ids in one call (max 5000)"})
+		return
+	}
 	count, err := BulkApply(database.DB, auth.GetUserID(c), in.Tag, in.ContactIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/coreaxissoftware/talkex_business/internal/observability"
 )
 
 // NotifyFn / WebhookFn are injected from main.go — this package can't
@@ -122,7 +124,9 @@ func Start(db *gorm.DB, interval time.Duration) {
 		t := time.NewTicker(interval)
 		defer t.Stop()
 		for range t.C {
-			Sweep(db)
+			observability.Safely("sla sweep tick", func() {
+				Sweep(db)
+			})
 		}
 	}()
 }

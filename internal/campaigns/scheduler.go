@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/coreaxissoftware/talkex_business/internal/observability"
 )
 
 func StartScheduler(db *gorm.DB) {
@@ -13,7 +15,9 @@ func StartScheduler(db *gorm.DB) {
 		defer ticker.Stop()
 
 		for range ticker.C {
-			launchDueCampaigns(db)
+			observability.Safely("campaigns scheduler tick", func() {
+				launchDueCampaigns(db)
+			})
 		}
 	}()
 	log.Println("Campaign scheduler started (30s interval)")

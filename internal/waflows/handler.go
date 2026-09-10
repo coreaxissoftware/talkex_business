@@ -37,8 +37,11 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	ownerID := auth.GetUserID(c)
 	var items []WAFlow
+	// Cap at 500 — plenty of headroom for the dashboard grid; anything
+	// beyond that a merchant should be filtering or searching, not
+	// scrolling through in one page.
 	if err := database.DB.Where("owner_id = ?", ownerID).
-		Order("created_at DESC").Find(&items).Error; err != nil {
+		Order("created_at DESC").Limit(500).Find(&items).Error; err != nil {
 		apihelpers.ServerError(c, err, "internal")
 		return
 	}

@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"gorm.io/gorm"
+
+	"github.com/coreaxissoftware/talkex_business/internal/observability"
 )
 
 // WalletChecker is injected from main.go to avoid importing wallet directly.
@@ -29,21 +31,23 @@ func StartWorker(db *gorm.DB, interval time.Duration, batchSize int) {
 		defer ticker.Stop()
 		sweepTick := 0
 		for range ticker.C {
-			n := ProcessQueue(db, batchSize)
-			if n > 0 {
-				log.Printf("messaging: processed %d messages", n)
-			}
-			sweepTick++
-			if sweepTick%12 == 0 {
-				moved := SweepToDLQ(db)
-				if moved > 0 {
-					log.Printf("messaging: moved %d failed messages to DLQ", moved)
+			observability.Safely("messaging worker tick", func() {
+				n := ProcessQueue(db, batchSize)
+				if n > 0 {
+					log.Printf("messaging: processed %d messages", n)
 				}
-			}
-			// Check wallet balances every 6th tick (~30s) for auto-pause
-			if sweepTick%6 == 0 {
-				checkWalletAutoPause(db)
-			}
+				sweepTick++
+				if sweepTick%12 == 0 {
+					moved := SweepToDLQ(db)
+					if moved > 0 {
+						log.Printf("messaging: moved %d failed messages to DLQ", moved)
+					}
+				}
+				// Check wallet balances every 6th tick (~30s) for auto-pause
+				if sweepTick%6 == 0 {
+					checkWalletAutoPause(db)
+				}
+			})
 		}
 	}()
 }

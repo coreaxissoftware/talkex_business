@@ -128,10 +128,18 @@ type bulkAssignReq struct {
 	AgentName   string   `json:"agent_name"`
 }
 
+// bulkIDsMax caps every bulk endpoint's array size — a merchant sending
+// 100k ids in one request would OOM the process for no legitimate reason.
+const bulkIDsMax = 1000
+
 func handleBulkAssign(c *gin.Context) {
 	var req bulkAssignReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	if len(req.IDs) > bulkIDsMax {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "too many ids in one call (max 1000)"})
 		return
 	}
 	affected, err := BulkAssign(database.DB, auth.GetUserID(c), req.IDs, req.AgentUserID, req.AgentName)
@@ -148,6 +156,10 @@ func handleBulkMarkRead(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
+		return
+	}
+	if len(req.IDs) > bulkIDsMax {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "too many ids in one call (max 1000)"})
 		return
 	}
 	affected, err := BulkMarkRead(database.DB, auth.GetUserID(c), req.IDs)

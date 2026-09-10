@@ -109,7 +109,21 @@ func setStateCookie(c *gin.Context, state string) {
 	// 10-minute lifetime — plenty for a real user click, expired for
 	// a link forged and sent to a victim yesterday.
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie(oauthStateCookie, state, 600, "/", "", false, true)
+	c.SetCookie(oauthStateCookie, state, 600, "/", "", cookieSecure(c), true)
+}
+
+// cookieSecure returns true when the cookie must carry the Secure flag
+// — i.e. we're serving over HTTPS in prod or the edge (Fly, Vercel) is
+// terminating TLS for us. In dev over plain HTTP, keep it false so the
+// browser accepts the cookie in local testing.
+func cookieSecure(c *gin.Context) bool {
+	if c.Request.TLS != nil {
+		return true
+	}
+	if c.GetHeader("X-Forwarded-Proto") == "https" {
+		return true
+	}
+	return !config.Get().IsDev()
 }
 
 // verifyStateCookie checks the state param against the pinned cookie
@@ -127,7 +141,7 @@ func verifyStateCookie(c *gin.Context, got string) bool {
 	if ok {
 		// Consume the cookie so it can't be replayed.
 		c.SetSameSite(http.SameSiteLaxMode)
-		c.SetCookie(oauthStateCookie, "", -1, "/", "", false, true)
+		c.SetCookie(oauthStateCookie, "", -1, "/", "", cookieSecure(c), true)
 	}
 	return ok
 }

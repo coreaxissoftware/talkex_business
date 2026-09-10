@@ -3,8 +3,10 @@ package integrations
 import (
 	"encoding/csv"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -70,9 +72,13 @@ func handleSheetsImport(c *gin.Context) {
 		return
 	}
 
-	res, err := http.Get(req.URL)
+	// 30s ceiling — a Google CSV that hasn't responded by then is
+	// almost certainly stuck; without this cap the goroutine hangs
+	// indefinitely and holds a DB connection.
+	client := &http.Client{Timeout: 30 * time.Second}
+	res, err := client.Get(req.URL)
 	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"detail": "Could not fetch sheet"})
+		c.JSON(http.StatusBadGateway, gin.H{"detail": "Could not fetch sheet (timeout or network error)"})
 		return
 	}
 	defer res.Body.Close()
@@ -81,7 +87,9 @@ func handleSheetsImport(c *gin.Context) {
 		return
 	}
 
-	reader := csv.NewReader(res.Body)
+	// Cap the response body at 5 MiB so a malicious host can't stream
+	// unbounded content and OOM us.
+	reader := csv.NewReader(io.LimitReader(res.Body, 5<<20))
 	reader.FieldsPerRecord = -1 // ragged rows allowed
 	rows, err := reader.ReadAll()
 	if err != nil {
