@@ -51,6 +51,7 @@ const WhiteLabel = lazy(() => import('./pages/WhiteLabel'))
 const Reseller = lazy(() => import('./pages/Reseller'))
 const PayLinks = lazy(() => import('./pages/PayLinks'))
 const WAFlows = lazy(() => import('./pages/WAFlows'))
+const PlatformSettings = lazy(() => import('./pages/PlatformSettings'))
 
 // PageFallback — one shared skeleton while a lazy chunk loads. Kept
 // visually quiet so a fast connection barely notices it.
@@ -102,6 +103,7 @@ const router = createBrowserRouter([
           { path: '/wallet', element: withSuspense(<WalletPage />) },
           { path: '/support', element: withSuspense(<Support />) },
           { path: '/settings', element: withSuspense(<SettingsPage />) },
+          { path: '/settings/platform', element: withSuspense(<PlatformSettings />) },
           { path: '/team', element: withSuspense(<Team />) },
           { path: '/tags', element: withSuspense(<Tags />) },
           { path: '/compliance', element: withSuspense(<Compliance />) },

@@ -128,8 +128,10 @@ CORS_ORIGINS=https://businessapp.talkex.in,https://business.talkex.in
 BASE_URL=https://businessapi.talkex.in
 FRONTEND_URL=https://businessapp.talkex.in
 
-# Fill these in after signing up with each provider — see
-# deploy/vps/README.md for the full list.
+# Fill these in after signing up with each provider — but you can
+# usually leave them blank here and add them from the Platform
+# Settings UI at /settings/platform (live-swap, no restart needed).
+# The env file is authoritative only on first boot.
 # ANTHROPIC_API_KEY=
 # MAILGUN_DOMAIN=
 # MAILGUN_API_KEY=
@@ -137,6 +139,11 @@ FRONTEND_URL=https://businessapp.talkex.in
 # FAST2SMS_API_KEY=
 # RAZORPAY_KEY_ID=
 # SENTRY_DSN=
+
+# PLATFORM_SUPERADMIN_EMAILS gates /settings/platform (the DB-backed
+# provider-secrets editor). Comma-separated list of operator emails.
+# Leaving this empty in production disables the console entirely.
+PLATFORM_SUPERADMIN_EMAILS=contact.ddmi@gmail.com
 ENV
 fi
 

@@ -48,6 +48,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/otp"
 	"github.com/coreaxissoftware/talkex_business/internal/paylinks"
 	"github.com/coreaxissoftware/talkex_business/internal/payments"
+	"github.com/coreaxissoftware/talkex_business/internal/platformenv"
 	"github.com/coreaxissoftware/talkex_business/internal/waflows"
 	"github.com/coreaxissoftware/talkex_business/internal/redisclient"
 	"github.com/coreaxissoftware/talkex_business/internal/reseller"
@@ -147,9 +148,23 @@ func main() {
 		&flows.RunState{},
 		&widget.Config{},
 		&widget.Session{},
+		&platformenv.Setting{},
 	); err != nil {
 		log.Fatalf("Failed to auto-migrate: %v", err)
 	}
+
+	// Hydrate DB-backed platform env overrides before any provider
+	// package tries to read its config. Any values on rows in
+	// platform_settings are copied into os.Environ so config.Get()
+	// picks them up on first call.
+	if err := platformenv.Load(database.DB); err != nil {
+		log.Printf("platformenv: initial load failed (continuing with env only): %v", err)
+	}
+	// Rebuild the config singleton so any provider that reads through
+	// config.Get() (Mailgun, MSG91, Fast2SMS, Razorpay, OAuth, ...)
+	// picks up the DB overrides on its next call.
+	config.Reload()
+	cfg = config.Get()
 
 	// Router
 	if !cfg.IsDev() {
@@ -235,6 +250,7 @@ func main() {
 	events.StartRedisFanout() // no-op when Redis is not configured
 	widget.RegisterRoutes(r)
 	metrics.RegisterRoutes(r)
+	platformenv.RegisterRoutes(r)
 	channels.RegisterWebhookRoutes(r)
 
 	// Wire payments → wallet credit. Uses paymentID as idempotency key

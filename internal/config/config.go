@@ -87,9 +87,27 @@ type Config struct {
 var (
 	instance *Config
 	once     sync.Once
+	mu       sync.RWMutex
 )
 
+// Reload wipes the cached singleton so the next Get() call reads
+// os.Environ from scratch. Called after platformenv.Load hydrates
+// DB-backed overrides into the process env at startup, and after
+// a superadmin saves through the admin UI.
+func Reload() {
+	mu.Lock()
+	instance = nil
+	once = sync.Once{}
+	mu.Unlock()
+}
+
 func Get() *Config {
+	mu.RLock()
+	if instance != nil {
+		defer mu.RUnlock()
+		return instance
+	}
+	mu.RUnlock()
 	once.Do(func() {
 		_ = godotenv.Load() // ignore error if .env missing — env vars may be set externally
 
