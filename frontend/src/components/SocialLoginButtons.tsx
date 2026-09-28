@@ -42,42 +42,53 @@ export default function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
   }
 
   return (
-    <div style={{marginBottom: 4}}>
+    <div style={{ marginBottom: 4 }}>
+      {/* Row 1 — Google full-width (the one most people click) */}
       <button
         type="button"
         onClick={() => handleSocialLogin('google')}
-        className="btn-oauth" style={{width: "100%", marginBottom: 8}}
+        className="btn-oauth"
+        style={{ width: '100%', marginBottom: 8 }}
       >
         {googleIcon}
         {label} with Google
       </button>
 
-      <button
-        type="button"
-        onClick={() => handleSocialLogin('facebook')}
-        className="btn-oauth" style={{width: "100%", marginBottom: 8}}
-      >
-        {facebookIcon}
-        {label} with Facebook
-      </button>
+      {/* Row 2 — Facebook + Apple + GitHub side-by-side. Icon-only on
+          narrow rows so the row never wraps and the register page
+          stays fit-to-screen; a title tooltip keeps the label discoverable. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        <button
+          type="button"
+          onClick={() => handleSocialLogin('facebook')}
+          className="btn-oauth"
+          title={`${label} with Facebook`}
+          aria-label={`${label} with Facebook`}
+        >
+          {facebookIcon}
+          <span style={{ fontSize: 12 }}>Facebook</span>
+        </button>
 
-      <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8}}>
         <button
           type="button"
           onClick={() => handleSocialLogin('apple')}
           className="btn-oauth"
+          title={`${label} with Apple`}
+          aria-label={`${label} with Apple`}
         >
           {appleIcon}
-          Apple
+          <span style={{ fontSize: 12 }}>Apple</span>
         </button>
 
         <button
           type="button"
           onClick={() => handleSocialLogin('github')}
           className="btn-oauth"
+          title={`${label} with GitHub`}
+          aria-label={`${label} with GitHub`}
         >
           {githubIcon}
-          GitHub
+          <span style={{ fontSize: 12 }}>GitHub</span>
         </button>
       </div>
     </div>
