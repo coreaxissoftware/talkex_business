@@ -13,6 +13,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 // maxWidgetBodyBytes caps a single visitor message. Real chats stay
@@ -109,7 +110,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleGetConfig(c *gin.Context) {
 	cfg, err := GetOrCreateConfig(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "widget.handleGetConfig")
 		return
 	}
 	c.JSON(http.StatusOK, cfg)
@@ -118,7 +119,7 @@ func handleGetConfig(c *gin.Context) {
 func handleUpdateConfig(c *gin.Context) {
 	cfg, err := GetOrCreateConfig(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "widget.handleUpdateConfig")
 		return
 	}
 	var in UpdateInput
@@ -128,7 +129,7 @@ func handleUpdateConfig(c *gin.Context) {
 	}
 	updated, err := UpdateConfig(database.DB, cfg, &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "widget.handleUpdateConfig")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -137,12 +138,12 @@ func handleUpdateConfig(c *gin.Context) {
 func handleRotateKey(c *gin.Context) {
 	cfg, err := GetOrCreateConfig(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "widget.handleRotateKey")
 		return
 	}
 	rotated, err := RotateKey(database.DB, cfg)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "widget.handleRotateKey")
 		return
 	}
 	c.JSON(http.StatusOK, rotated)
@@ -250,7 +251,7 @@ func handleInit(c *gin.Context) {
 		sess.UserAgent = &ua
 	}
 	if err := database.DB.Create(sess).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "widget.handleInit")
 		return
 	}
 
@@ -359,7 +360,7 @@ func handleListMessages(c *gin.Context) {
 	}
 	msgs, err := lister(sess.ConversationID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "widget.handleListMessages")
 		return
 	}
 	c.JSON(http.StatusOK, msgs)

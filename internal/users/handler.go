@@ -9,6 +9,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 	"github.com/coreaxissoftware/talkex_business/internal/middleware"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 type registerReq struct {
@@ -109,7 +110,7 @@ func handleRegister(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleRegister")
 		return
 	}
 
@@ -219,7 +220,7 @@ func handleUpdateMe(c *gin.Context) {
 		BusinessCategory: req.BusinessCategory,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleUpdateMe")
 		return
 	}
 	c.JSON(http.StatusOK, withQualityStatus(updated))
@@ -243,7 +244,7 @@ func handleChangePassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": err.Error()})
 		return
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleChangePassword")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "Password updated"})
@@ -267,7 +268,7 @@ func handleDeactivate(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"detail": "Incorrect password"})
 		return
 	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleDeactivate")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "Account deactivated"})
@@ -322,12 +323,12 @@ func handleResetPassword(c *gin.Context) {
 	}
 	hashed, err := HashPassword(req.NewPassword)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleResetPassword")
 		return
 	}
 	user.HashedPassword = hashed
 	if err := database.DB.Save(user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleResetPassword")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "Password reset"})
@@ -355,7 +356,7 @@ func handle2FASetup(c *gin.Context) {
 
 	user.TwoFactorSecret = &secret
 	if err := database.DB.Save(user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handle2FASetup")
 		return
 	}
 
@@ -397,7 +398,7 @@ func handle2FAVerify(c *gin.Context) {
 
 	user.TwoFactorEnabled = true
 	if err := database.DB.Save(user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handle2FAVerify")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "2FA enabled"})
@@ -436,7 +437,7 @@ func handle2FADisable(c *gin.Context) {
 	user.TwoFactorEnabled = false
 	user.TwoFactorSecret = nil
 	if err := database.DB.Save(user).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handle2FADisable")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "2FA disabled"})
@@ -448,7 +449,7 @@ func handleListSessions(c *gin.Context) {
 	userID := auth.GetUserID(c)
 	sessions, err := auth.ListSessions(database.DB, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleListSessions")
 		return
 	}
 	c.JSON(http.StatusOK, sessions)
@@ -458,7 +459,7 @@ func handleRevokeSession(c *gin.Context) {
 	userID := auth.GetUserID(c)
 	sid := c.Param("sid")
 	if err := auth.RevokeSession(database.DB, userID, sid); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleRevokeSession")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "Session revoked"})
@@ -467,7 +468,7 @@ func handleRevokeSession(c *gin.Context) {
 func handleRevokeAllSessions(c *gin.Context) {
 	userID := auth.GetUserID(c)
 	if err := auth.RevokeAllSessions(database.DB, userID, ""); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "users.handleRevokeAllSessions")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "All sessions revoked"})

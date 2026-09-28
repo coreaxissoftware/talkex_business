@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -36,7 +37,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleStats(c *gin.Context) {
 	stats, err := GetStats(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleStats")
 		return
 	}
 	c.JSON(http.StatusOK, stats)
@@ -45,7 +46,7 @@ func handleStats(c *gin.Context) {
 func handleListAllConsents(c *gin.Context) {
 	items, err := ListAllConsents(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleListAllConsents")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -54,7 +55,7 @@ func handleListAllConsents(c *gin.Context) {
 func handleListConsents(c *gin.Context) {
 	items, err := ListConsents(database.DB, auth.GetUserID(c), c.Param("contactId"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleListConsents")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -68,7 +69,7 @@ func handleRecordConsent(c *gin.Context) {
 	}
 	rec, err := RecordConsent(database.DB, auth.GetUserID(c), &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleRecordConsent")
 		return
 	}
 	c.JSON(http.StatusCreated, rec)
@@ -77,7 +78,7 @@ func handleRecordConsent(c *gin.Context) {
 func handleRevokeAll(c *gin.Context) {
 	count, err := RevokeAllConsents(database.DB, auth.GetUserID(c), c.Param("contactId"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleRevokeAll")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"revoked": count})
@@ -86,7 +87,7 @@ func handleRevokeAll(c *gin.Context) {
 func handleListDSARs(c *gin.Context) {
 	items, err := ListDSARs(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleListDSARs")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -104,7 +105,7 @@ func handleCreateDSAR(c *gin.Context) {
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "Invalid type. Use: access, erasure, correction, portability"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleCreateDSAR")
 		return
 	}
 	c.JSON(http.StatusCreated, req)
@@ -117,7 +118,7 @@ func handleProcessDSAR(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"detail": "DSAR request not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleProcessDSAR")
 		return
 	}
 	c.JSON(http.StatusOK, req)
@@ -137,7 +138,7 @@ func handleCompleteDSAR(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"detail": "DSAR request not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleCompleteDSAR")
 		return
 	}
 	c.JSON(http.StatusOK, req)
@@ -157,7 +158,7 @@ func handleRejectDSAR(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"detail": "DSAR request not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleRejectDSAR")
 		return
 	}
 	c.JSON(http.StatusOK, req)
@@ -166,7 +167,7 @@ func handleRejectDSAR(c *gin.Context) {
 func handleListProcessing(c *gin.Context) {
 	items, err := ListProcessingRecords(database.DB, auth.GetUserID(c), 50)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "compliance.handleListProcessing")
 		return
 	}
 	c.JSON(http.StatusOK, items)

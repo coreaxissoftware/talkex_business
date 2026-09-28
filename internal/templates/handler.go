@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -46,7 +47,7 @@ func handleSubmitToMeta(c *gin.Context) {
 func handleList(c *gin.Context) {
 	tpls, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "templates.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, tpls)
@@ -60,7 +61,7 @@ func handleCreate(c *gin.Context) {
 	}
 	tpl, err := Create(database.DB, auth.GetUserID(c), &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "templates.handleCreate")
 		return
 	}
 	c.JSON(http.StatusCreated, tpl)
@@ -73,7 +74,7 @@ func getOwnedOrAbort(c *gin.Context) *MessageTemplate {
 		return nil
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "templates.getOwnedOrAbort")
 		return nil
 	}
 	return tpl
@@ -97,7 +98,7 @@ func handleUpdate(c *gin.Context) {
 	}
 	updated, err := Update(database.DB, tpl, &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "templates.handleUpdate")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -109,7 +110,7 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err := Delete(database.DB, tpl); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "templates.handleDelete")
 		return
 	}
 	c.Status(http.StatusNoContent)

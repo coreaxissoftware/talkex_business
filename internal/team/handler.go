@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -24,7 +25,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleActivity(c *gin.Context) {
 	items, err := Activity(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "team.handleActivity")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -33,7 +34,7 @@ func handleActivity(c *gin.Context) {
 func handleList(c *gin.Context) {
 	members, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "team.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, members)
@@ -55,7 +56,7 @@ func handleInvite(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "team.handleInvite")
 		return
 	}
 	c.JSON(http.StatusCreated, m)
@@ -68,7 +69,7 @@ func getOwnedOrAbort(c *gin.Context) *Member {
 		return nil
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "team.getOwnedOrAbort")
 		return nil
 	}
 	return m
@@ -90,7 +91,7 @@ func handleUpdateRole(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "team.handleUpdateRole")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -102,7 +103,7 @@ func handleRemove(c *gin.Context) {
 		return
 	}
 	if err := Remove(database.DB, m); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "team.handleRemove")
 		return
 	}
 	c.Status(http.StatusNoContent)

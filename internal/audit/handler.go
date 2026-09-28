@@ -9,6 +9,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -37,7 +38,7 @@ func handleList(c *gin.Context) {
 
 	entries, total, err := List(database.DB, f)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "audit.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"items": entries, "total": total})
@@ -50,7 +51,7 @@ func handleExportCSV(c *gin.Context) {
 	}
 	entries, _, err := List(database.DB, f)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "audit.handleExportCSV")
 		return
 	}
 	c.Header("Content-Type", "text/csv")
@@ -69,7 +70,7 @@ func handleExportCSV(c *gin.Context) {
 func handleStats(c *gin.Context) {
 	stats, err := GetStats(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "audit.handleStats")
 		return
 	}
 	c.JSON(http.StatusOK, stats)

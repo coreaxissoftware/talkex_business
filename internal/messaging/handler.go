@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -29,7 +30,7 @@ func handleListDLQ(c *gin.Context) {
 	includeResolved := c.Query("include_resolved") == "true"
 	items, err := ListDeadLetters(database.DB, auth.GetUserID(c), includeResolved)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "messaging.handleListDLQ")
 		return
 	}
 	c.JSON(http.StatusOK, items)

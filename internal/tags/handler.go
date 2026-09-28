@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -23,7 +24,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	tags, err := ListAll(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "tags.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, tags)
@@ -40,7 +41,7 @@ func handleRename(c *gin.Context) {
 	}
 	count, err := Rename(database.DB, auth.GetUserID(c), in.OldName, in.NewName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "tags.handleRename")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"updated": count})
@@ -56,7 +57,7 @@ func handleDelete(c *gin.Context) {
 	}
 	count, err := Delete(database.DB, auth.GetUserID(c), in.Name)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "tags.handleDelete")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"updated": count})
@@ -78,7 +79,7 @@ func handleBulkApply(c *gin.Context) {
 	}
 	count, err := BulkApply(database.DB, auth.GetUserID(c), in.Tag, in.ContactIDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "tags.handleBulkApply")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"applied": count})

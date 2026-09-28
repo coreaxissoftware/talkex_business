@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -27,7 +28,7 @@ func handleList(c *gin.Context) {
 	}
 	items, err := List(database.DB, opts)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "notifications.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -36,7 +37,7 @@ func handleList(c *gin.Context) {
 func handleUnreadCount(c *gin.Context) {
 	n, err := UnreadCount(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "notifications.handleUnreadCount")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"count": n})
@@ -50,13 +51,13 @@ func handleMarkRead(c *gin.Context) {
 	case ErrNotFound:
 		c.JSON(http.StatusNotFound, gin.H{"detail": "Notification not found"})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "notifications.handleMarkRead")
 	}
 }
 
 func handleMarkAllRead(c *gin.Context) {
 	if err := MarkAllRead(database.DB, auth.GetUserID(c)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "notifications.handleMarkAllRead")
 		return
 	}
 	c.Status(http.StatusNoContent)

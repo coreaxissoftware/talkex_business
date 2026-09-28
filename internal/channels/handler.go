@@ -9,6 +9,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	talkexch "github.com/coreaxissoftware/talkex_business/internal/channels/talkex"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -32,7 +33,7 @@ func handleCatalog(c *gin.Context) {
 func handleList(c *gin.Context) {
 	configs, err := ListConfigs(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "channels.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, configs)
@@ -51,7 +52,7 @@ func handleSetEnabled(c *gin.Context) {
 	case ErrUnknownKind:
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "Unknown channel kind"})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "channels.handleSetEnabled")
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -27,7 +28,7 @@ func handleList(c *gin.Context) {
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "50"))
 	items, err := List(database.DB, auth.GetUserID(c), limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "csat.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -36,7 +37,7 @@ func handleList(c *gin.Context) {
 func handleSummary(c *gin.Context) {
 	summary, err := GetSummary(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "csat.handleSummary")
 		return
 	}
 	c.JSON(http.StatusOK, summary)
@@ -58,7 +59,7 @@ func handleSubmit(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "csat.handleSubmit")
 		return
 	}
 	c.JSON(http.StatusCreated, created)

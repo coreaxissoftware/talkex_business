@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -24,7 +25,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	items, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "canned.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -42,7 +43,7 @@ func handleCreate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "canned.handleCreate")
 		return
 	}
 	c.JSON(http.StatusCreated, created)
@@ -55,7 +56,7 @@ func handleUpdate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "canned.handleUpdate")
 		return
 	}
 	var in UpdateInput
@@ -65,7 +66,7 @@ func handleUpdate(c *gin.Context) {
 	}
 	updated, err := Update(database.DB, r, &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "canned.handleUpdate")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -78,11 +79,11 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "canned.handleDelete")
 		return
 	}
 	if err := Delete(database.DB, r); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "canned.handleDelete")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -96,7 +97,7 @@ func handleBumpUsage(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"detail": "Not found"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "canned.handleBumpUsage")
 		return
 	}
 	BumpUsage(database.DB, c.Param("id"))

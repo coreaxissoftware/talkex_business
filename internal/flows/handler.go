@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -25,7 +26,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	items, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "flows.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -39,7 +40,7 @@ func handleCreate(c *gin.Context) {
 	}
 	created, err := Create(database.DB, auth.GetUserID(c), &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "flows.handleCreate")
 		return
 	}
 	c.JSON(http.StatusCreated, created)
@@ -52,7 +53,7 @@ func handleGet(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "flows.handleGet")
 		return
 	}
 	c.JSON(http.StatusOK, f)
@@ -65,7 +66,7 @@ func handleUpdate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "flows.handleUpdate")
 		return
 	}
 	var in UpdateInput
@@ -75,7 +76,7 @@ func handleUpdate(c *gin.Context) {
 	}
 	updated, err := Update(database.DB, f, &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "flows.handleUpdate")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -88,11 +89,11 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "flows.handleDelete")
 		return
 	}
 	if err := Delete(database.DB, f); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "flows.handleDelete")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -106,7 +107,7 @@ func handleTest(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "flows.handleTest")
 		return
 	}
 	var req struct {

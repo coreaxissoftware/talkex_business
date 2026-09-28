@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -31,7 +32,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	items, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "media.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -109,11 +110,11 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "media.handleDelete")
 		return
 	}
 	if err := Delete(database.DB, m); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "media.handleDelete")
 		return
 	}
 	c.Status(http.StatusNoContent)

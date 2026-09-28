@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -27,7 +28,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	lists, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contactlists.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, lists)
@@ -41,7 +42,7 @@ func handleCreate(c *gin.Context) {
 	}
 	list, err := Create(database.DB, auth.GetUserID(c), &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contactlists.handleCreate")
 		return
 	}
 	c.JSON(http.StatusCreated, list)
@@ -54,7 +55,7 @@ func getOwnedOrAbort(c *gin.Context) *ContactList {
 		return nil
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contactlists.getOwnedOrAbort")
 		return nil
 	}
 	return list
@@ -78,7 +79,7 @@ func handleUpdate(c *gin.Context) {
 	}
 	updated, err := Update(database.DB, list, &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contactlists.handleUpdate")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -90,7 +91,7 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err := Delete(database.DB, list); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contactlists.handleDelete")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -103,7 +104,7 @@ func handleGetMembers(c *gin.Context) {
 	}
 	ids, err := GetMembers(database.DB, list.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contactlists.handleGetMembers")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"contact_ids": ids})
@@ -121,7 +122,7 @@ func handleAddMembers(c *gin.Context) {
 	}
 	added, err := AddMembers(database.DB, list.ID, in.ContactIDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contactlists.handleAddMembers")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"added": added})
@@ -138,7 +139,7 @@ func handleRemoveMembers(c *gin.Context) {
 		return
 	}
 	if err := RemoveMembers(database.DB, list.ID, in.ContactIDs); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contactlists.handleRemoveMembers")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"removed": len(in.ContactIDs)})

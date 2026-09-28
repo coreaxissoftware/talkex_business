@@ -10,6 +10,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 // react POST /conversations/:id/messages/:message_id/react — set or
@@ -47,7 +48,7 @@ func handleReact(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleReact")
 		return
 	}
 
@@ -59,14 +60,14 @@ func handleReact(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleReact")
 		return
 	}
 
 	// Update the message row's Reaction summary.
 	msg.Reaction = body.Emoji
 	if err := database.DB.Model(&msg).Update("reaction", body.Emoji).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleReact")
 		return
 	}
 

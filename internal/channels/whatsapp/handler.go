@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -26,7 +27,7 @@ func handleGetOnboarding(c *gin.Context) {
 	ownerID := auth.GetUserID(c)
 	o, err := GetOnboarding(database.DB, ownerID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "whatsapp.handleGetOnboarding")
 		return
 	}
 	if o == nil {
@@ -40,7 +41,7 @@ func handleStartOnboarding(c *gin.Context) {
 	ownerID := auth.GetUserID(c)
 	o, err := StartOnboarding(database.DB, ownerID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "whatsapp.handleStartOnboarding")
 		return
 	}
 	c.JSON(http.StatusOK, o)
@@ -59,7 +60,7 @@ func handleBusinessInfo(c *gin.Context) {
 		return
 	}
 	if err := SaveBusinessInfo(database.DB, o, &req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "whatsapp.handleBusinessInfo")
 		return
 	}
 	c.JSON(http.StatusOK, o)
@@ -78,7 +79,7 @@ func handleVerification(c *gin.Context) {
 		return
 	}
 	if err := SaveVerification(database.DB, o, &req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "whatsapp.handleVerification")
 		return
 	}
 	c.JSON(http.StatusOK, o)
@@ -97,7 +98,7 @@ func handlePhoneRegistration(c *gin.Context) {
 		return
 	}
 	if err := SavePhoneRegistration(database.DB, o, &req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "whatsapp.handlePhoneRegistration")
 		return
 	}
 	c.JSON(http.StatusOK, o)
@@ -116,7 +117,7 @@ func handleDisplayName(c *gin.Context) {
 		return
 	}
 	if err := SaveDisplayName(database.DB, o, &req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "whatsapp.handleDisplayName")
 		return
 	}
 	c.JSON(http.StatusOK, o)

@@ -14,6 +14,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -64,7 +65,7 @@ func handleList(c *gin.Context) {
 	if search == "" && tag == "" && limitStr == "" && offsetStr == "" {
 		contacts, err := List(database.DB, auth.GetUserID(c))
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+			apihelpers.ServerError(c, err, "contacts.handleList")
 			return
 		}
 		c.JSON(http.StatusOK, contacts)
@@ -91,7 +92,7 @@ func handleList(c *gin.Context) {
 		Offset: offset,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contacts.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, result)
@@ -105,7 +106,7 @@ func handleCreate(c *gin.Context) {
 	}
 	contact, err := Create(database.DB, auth.GetUserID(c), &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contacts.handleCreate")
 		return
 	}
 	c.JSON(http.StatusCreated, contact)
@@ -118,7 +119,7 @@ func getOwnedOrAbort(c *gin.Context) *Contact {
 		return nil
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contacts.getOwnedOrAbort")
 		return nil
 	}
 	return contact
@@ -142,7 +143,7 @@ func handleUpdate(c *gin.Context) {
 	}
 	updated, err := Update(database.DB, contact, &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contacts.handleUpdate")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -154,7 +155,7 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err := Delete(database.DB, contact); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contacts.handleDelete")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -259,7 +260,7 @@ func handleImportCSV(c *gin.Context) {
 func handleExportCSV(c *gin.Context) {
 	contacts, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contacts.handleExportCSV")
 		return
 	}
 
@@ -316,7 +317,7 @@ func handleOptIn(c *gin.Context) {
 		contact.OptedInAt = nil
 	}
 	if err := database.DB.Save(contact).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "contacts.handleOptIn")
 		return
 	}
 	c.JSON(http.StatusOK, contact)

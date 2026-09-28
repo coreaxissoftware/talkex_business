@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -29,7 +30,7 @@ func handleGet(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "customers.handleGet")
 		return
 	}
 	c.JSON(http.StatusOK, cust)
@@ -43,7 +44,7 @@ func handleUpsert(c *gin.Context) {
 	}
 	cust, err := Upsert(database.DB, auth.GetUserID(c), &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "customers.handleUpsert")
 		return
 	}
 	c.JSON(http.StatusOK, cust)

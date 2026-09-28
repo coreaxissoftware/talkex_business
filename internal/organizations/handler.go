@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -28,7 +29,7 @@ func handleList(c *gin.Context) {
 	ownerID := auth.GetUserID(c)
 	orgs, err := GetByOwner(database.DB, ownerID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, orgs)
@@ -51,7 +52,7 @@ func handleCreate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleCreate")
 		return
 	}
 	c.JSON(http.StatusCreated, org)
@@ -71,7 +72,7 @@ func handleGet(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleGet")
 		return
 	}
 	c.JSON(http.StatusOK, org)
@@ -85,7 +86,7 @@ func handleUpdate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleUpdate")
 		return
 	}
 	if org.OwnerID != ownerID {
@@ -99,7 +100,7 @@ func handleUpdate(c *gin.Context) {
 	}
 	updated, err := Update(database.DB, org, &req)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleUpdate")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -113,7 +114,7 @@ func handleListMembers(c *gin.Context) {
 	}
 	members, err := ListMembers(database.DB, orgID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleListMembers")
 		return
 	}
 	c.JSON(http.StatusOK, members)
@@ -128,7 +129,7 @@ func handleAddMember(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleAddMember")
 		return
 	}
 	if org.OwnerID != ownerID {
@@ -153,7 +154,7 @@ func handleAddMember(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleAddMember")
 		return
 	}
 	c.JSON(http.StatusCreated, m)
@@ -168,7 +169,7 @@ func handleRemoveMember(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleRemoveMember")
 		return
 	}
 	if org.OwnerID != ownerID {
@@ -176,7 +177,7 @@ func handleRemoveMember(c *gin.Context) {
 		return
 	}
 	if err := RemoveMember(database.DB, orgID, c.Param("uid")); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleRemoveMember")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"detail": "Member removed"})
@@ -192,7 +193,7 @@ func handleListSubOrgs(c *gin.Context) {
 	}
 	orgs, err := ListSubOrgs(database.DB, orgID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "organizations.handleListSubOrgs")
 		return
 	}
 	c.JSON(http.StatusOK, orgs)

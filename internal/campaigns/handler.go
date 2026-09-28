@@ -8,6 +8,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -31,7 +32,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	items, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -40,7 +41,7 @@ func handleList(c *gin.Context) {
 func handleExport(c *gin.Context) {
 	items, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleExport")
 		return
 	}
 	c.Header("Content-Type", "text/csv")
@@ -72,7 +73,7 @@ func handleCreate(c *gin.Context) {
 		case ErrNoRecipients:
 			c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": err.Error()})
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+			apihelpers.ServerError(c, err, "campaigns.handleCreate")
 		}
 		return
 	}
@@ -86,7 +87,7 @@ func getOwnedOrAbort(c *gin.Context) *Campaign {
 		return nil
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.getOwnedOrAbort")
 		return nil
 	}
 	return camp
@@ -114,7 +115,7 @@ func handleUpdate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleUpdate")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -131,7 +132,7 @@ func handleLaunch(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleLaunch")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -148,7 +149,7 @@ func handleCancel(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleCancel")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -165,7 +166,7 @@ func handleApprove(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleApprove")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -189,7 +190,7 @@ func handleReject(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleReject")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -202,7 +203,7 @@ func handleClone(c *gin.Context) {
 	}
 	cloned, err := Clone(database.DB, camp)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleClone")
 		return
 	}
 	c.JSON(http.StatusCreated, cloned)
@@ -214,7 +215,7 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err := Delete(database.DB, camp); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "campaigns.handleDelete")
 		return
 	}
 	c.Status(http.StatusNoContent)

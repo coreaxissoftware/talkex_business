@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -24,7 +25,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	items, err := ListEndpoints(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "webhooks.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -38,7 +39,7 @@ func handleCreate(c *gin.Context) {
 	}
 	result, err := CreateEndpoint(database.DB, auth.GetUserID(c), &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "webhooks.handleCreate")
 		return
 	}
 	c.JSON(http.StatusCreated, result)
@@ -51,11 +52,11 @@ func handleDelete(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "webhooks.handleDelete")
 		return
 	}
 	if err := DeleteEndpoint(database.DB, e); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "webhooks.handleDelete")
 		return
 	}
 	c.Status(http.StatusNoContent)
@@ -69,7 +70,7 @@ func handleRetry(c *gin.Context) {
 	case ErrEndpointNotFound:
 		c.JSON(http.StatusNotFound, gin.H{"detail": "Delivery not found"})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "webhooks.handleRetry")
 	}
 }
 
@@ -80,7 +81,7 @@ func handleDeliveries(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "webhooks.handleDeliveries")
 		return
 	}
 	c.JSON(http.StatusOK, items)

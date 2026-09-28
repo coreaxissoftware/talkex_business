@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -28,7 +29,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	items, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -41,7 +42,7 @@ func getOwnedOrAbort(c *gin.Context) *Conversation {
 		return nil
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.getOwnedOrAbort")
 		return nil
 	}
 	return conv
@@ -54,7 +55,7 @@ func handleListMessages(c *gin.Context) {
 	}
 	msgs, err := ListMessages(database.DB, conv.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleListMessages")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -76,7 +77,7 @@ func handleUpdate(c *gin.Context) {
 	}
 	updated, err := UpdateConversation(database.DB, conv, &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleUpdate")
 		return
 	}
 	c.JSON(http.StatusOK, updated)
@@ -88,7 +89,7 @@ func handleMarkRead(c *gin.Context) {
 		return
 	}
 	if err := MarkRead(database.DB, conv); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleMarkRead")
 		return
 	}
 	c.JSON(http.StatusOK, conv)
@@ -109,14 +110,14 @@ func handleSend(c *gin.Context) {
 	case ErrWindowClosed:
 		c.JSON(http.StatusConflict, gin.H{"detail": err.Error()})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleSend")
 	}
 }
 
 func handleSearch(c *gin.Context) {
 	items, err := Search(database.DB, auth.GetUserID(c), c.Query("q"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleSearch")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -144,7 +145,7 @@ func handleBulkAssign(c *gin.Context) {
 	}
 	affected, err := BulkAssign(database.DB, auth.GetUserID(c), req.IDs, req.AgentUserID, req.AgentName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleBulkAssign")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"updated": affected})
@@ -164,7 +165,7 @@ func handleBulkMarkRead(c *gin.Context) {
 	}
 	affected, err := BulkMarkRead(database.DB, auth.GetUserID(c), req.IDs)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleBulkMarkRead")
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"updated": affected})
@@ -183,6 +184,6 @@ func handleInbound(c *gin.Context) {
 	case ErrContactNotFound:
 		c.JSON(http.StatusNotFound, gin.H{"detail": err.Error()})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "conversations.handleInbound")
 	}
 }

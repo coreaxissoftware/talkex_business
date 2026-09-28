@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -23,7 +24,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleList(c *gin.Context) {
 	items, err := List(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "developers.handleList")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -37,7 +38,7 @@ func handleCreate(c *gin.Context) {
 	}
 	result, err := Create(database.DB, auth.GetUserID(c), &in)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "developers.handleCreate")
 		return
 	}
 	c.JSON(http.StatusCreated, result)
@@ -53,7 +54,7 @@ func handleRevoke(c *gin.Context) {
 	case ErrAlreadyRevoked:
 		c.JSON(http.StatusConflict, gin.H{"detail": "API key is already revoked"})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "developers.handleRevoke")
 	}
 }
 
@@ -65,6 +66,6 @@ func handleDelete(c *gin.Context) {
 	case ErrKeyNotFound:
 		c.JSON(http.StatusNotFound, gin.H{"detail": "API key not found"})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "developers.handleDelete")
 	}
 }

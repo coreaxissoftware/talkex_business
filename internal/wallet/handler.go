@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 type createTxnReq struct {
@@ -30,7 +31,7 @@ func handleGetWallet(c *gin.Context) {
 	userID := auth.GetUserID(c)
 	w, err := GetOrCreateWallet(database.DB, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "wallet.handleGetWallet")
 		return
 	}
 	c.JSON(http.StatusOK, w)
@@ -40,12 +41,12 @@ func handleListTransactions(c *gin.Context) {
 	userID := auth.GetUserID(c)
 	w, err := GetOrCreateWallet(database.DB, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "wallet.handleListTransactions")
 		return
 	}
 	txns, err := ListTransactions(database.DB, w.ID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "wallet.handleListTransactions")
 		return
 	}
 	c.JSON(http.StatusOK, txns)
@@ -61,7 +62,7 @@ func handleCreateTransaction(c *gin.Context) {
 	userID := auth.GetUserID(c)
 	w, err := GetOrCreateWallet(database.DB, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "wallet.handleCreateTransaction")
 		return
 	}
 
@@ -71,7 +72,7 @@ func handleCreateTransaction(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "wallet.handleCreateTransaction")
 		return
 	}
 

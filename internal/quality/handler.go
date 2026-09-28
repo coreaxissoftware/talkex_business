@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -22,7 +23,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleStats(c *gin.Context) {
 	stats, err := GetStats(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "quality.handleStats")
 		return
 	}
 	c.JSON(http.StatusOK, stats)
@@ -31,7 +32,7 @@ func handleStats(c *gin.Context) {
 func handleEvents(c *gin.Context) {
 	events, err := ListEvents(database.DB, auth.GetUserID(c), 50)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "quality.handleEvents")
 		return
 	}
 	c.JSON(http.StatusOK, events)
@@ -51,7 +52,7 @@ func handleRecordEvent(c *gin.Context) {
 		return
 	}
 	if err := RecordEvent(database.DB, auth.GetUserID(c), in.ContactID, in.Channel, in.Type, in.Reason); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "quality.handleRecordEvent")
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"detail": "Event recorded"})

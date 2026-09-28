@@ -14,6 +14,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/config"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 // verifyRazorpaySignature checks the X-Razorpay-Signature header
@@ -80,7 +81,7 @@ func handleCreateOrder(c *gin.Context) {
 func handleListOrders(c *gin.Context) {
 	items, err := ListOrders(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "payments.handleListOrders")
 		return
 	}
 	c.JSON(http.StatusOK, items)
@@ -110,7 +111,7 @@ func handleDevSimulate(c *gin.Context) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "payments.handleDevSimulate")
 		return
 	}
 

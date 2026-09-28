@@ -10,6 +10,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 // PDF export — server-side rendered summary. Ships a self-contained PDF
@@ -32,7 +33,7 @@ func handlePDF(c *gin.Context) {
 	ownerID := auth.GetUserID(c)
 	stats, err := GetSummary(database.DB, ownerID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "analytics.handlePDF")
 		return
 	}
 

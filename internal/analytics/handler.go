@@ -10,6 +10,7 @@ import (
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
 	"github.com/coreaxissoftware/talkex_business/internal/messaging"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -26,7 +27,7 @@ func RegisterRoutes(r *gin.Engine) {
 func handleSummary(c *gin.Context) {
 	s, err := GetSummary(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "analytics.handleSummary")
 		return
 	}
 	c.JSON(http.StatusOK, s)
@@ -39,7 +40,7 @@ func handleExportCSV(c *gin.Context) {
 	}
 	series, err := GetTimeseries(database.DB, auth.GetUserID(c), days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "analytics.handleExportCSV")
 		return
 	}
 	c.Header("Content-Type", "text/csv")
@@ -62,7 +63,7 @@ func handleTimeseries(c *gin.Context) {
 	}
 	series, err := GetTimeseries(database.DB, auth.GetUserID(c), days)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "analytics.handleTimeseries")
 		return
 	}
 	c.JSON(http.StatusOK, series)

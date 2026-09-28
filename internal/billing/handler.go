@@ -7,6 +7,7 @@ import (
 
 	"github.com/coreaxissoftware/talkex_business/internal/auth"
 	"github.com/coreaxissoftware/talkex_business/internal/database"
+	"github.com/coreaxissoftware/talkex_business/internal/apihelpers"
 )
 
 func RegisterRoutes(r *gin.Engine) {
@@ -27,7 +28,7 @@ func handleListPlans(c *gin.Context) {
 func handleGetSubscription(c *gin.Context) {
 	sub, err := GetOrCreate(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "billing.handleGetSubscription")
 		return
 	}
 	plan := PlanByID(sub.Plan)
@@ -51,14 +52,14 @@ func handleChangePlan(c *gin.Context) {
 	case ErrUnknownPlan:
 		c.JSON(http.StatusUnprocessableEntity, gin.H{"detail": "unknown plan"})
 	default:
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "billing.handleChangePlan")
 	}
 }
 
 func handleListInvoices(c *gin.Context) {
 	items, err := ListInvoices(database.DB, auth.GetUserID(c))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"detail": "Internal server error"})
+		apihelpers.ServerError(c, err, "billing.handleListInvoices")
 		return
 	}
 	c.JSON(http.StatusOK, items)
