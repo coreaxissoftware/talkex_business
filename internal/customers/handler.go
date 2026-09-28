@@ -21,7 +21,11 @@ func RegisterRoutes(r *gin.Engine) {
 func handleGet(c *gin.Context) {
 	cust, err := GetByOwner(database.DB, auth.GetUserID(c))
 	if err == ErrNotFound {
-		c.JSON(http.StatusNotFound, gin.H{"detail": "No business profile yet"})
+		// A brand-new tenant hasn't filled in their business profile
+		// yet — that's normal, not an error. Return 200 with null so
+		// the frontend can render the empty form without treating
+		// this as a real 404.
+		c.JSON(http.StatusOK, nil)
 		return
 	}
 	if err != nil {

@@ -17,6 +17,15 @@ type Session struct {
 	RevokedAt *time.Time `json:"revoked_at"`
 }
 
+// TableName pins to `auth_sessions` — GORM's default plural of the
+// struct name (`sessions`) collides with widget.Session which also
+// defaulted to `sessions`. When a merchant hit /users/me/sessions on
+// a fresh Postgres install, the query ran against widget's schema
+// (owner_id / contact_id / visitor_name columns) and 500'd because
+// user_id + revoked_at don't exist there. Same class of bug as the
+// channels vs widget `configs` collision fixed in 759d329.
+func (Session) TableName() string { return "auth_sessions" }
+
 func (s *Session) IsActive() bool {
 	return s.RevokedAt == nil && s.ExpiresAt.After(time.Now())
 }

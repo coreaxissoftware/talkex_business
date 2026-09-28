@@ -45,3 +45,8 @@ type Session struct {
 	PageURL        *string `gorm:"type:varchar(512)" json:"page_url"`
 	UserAgent      *string `gorm:"type:varchar(255)" json:"user_agent"`
 }
+
+// TableName pins to `widget_sessions` — collision with auth.Session
+// (both default plural is `sessions`). See internal/auth/sessions.go
+// TableName comment for the full story.
+func (Session) TableName() string { return "widget_sessions" }

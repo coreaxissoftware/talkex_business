@@ -55,6 +55,11 @@ var migrations = []migration{
 		Note: "Split the shared `configs` table into `channel_configs` + `widget_configs`",
 		Run:  renameLegacyConfigsTable,
 	},
+	{
+		ID:   "20260928_rename_sessions_to_widget_sessions",
+		Note: "Split the shared `sessions` table into `auth_sessions` + `widget_sessions`",
+		Run:  renameLegacySessionsTable,
+	},
 }
 
 func main() {
@@ -189,5 +194,37 @@ func renameLegacyConfigsTable(tx *gorm.DB) error {
 	// Silence the unused-import warning when the file is compiled with
 	// no side effects being triggered (os.Getenv is called below).
 	_ = os.Getenv
+	return nil
+}
+
+// renameLegacySessionsTable splits the legacy shared `sessions` table
+// into `widget_sessions` (visitor-scoped columns: owner_id, contact_id,
+// visitor_name, ...) and `auth_sessions` (user JWT sessions: user_id,
+// token_jti, expires_at, ...).
+//
+// The legacy `sessions` table always held widget.Session's shape
+// because widget.RegisterRoutes ran before users.RegisterRoutes on
+// AutoMigrate. That's why /users/me/sessions 500'd on a fresh install:
+// the auth handler queried for user_id + revoked_at columns that
+// widget's schema doesn't have.
+//
+// Idempotent: skips gracefully if the old table is already gone or
+// if the new tables already exist.
+func renameLegacySessionsTable(tx *gorm.DB) error {
+	if !tx.Migrator().HasTable("sessions") {
+		fmt.Println("   (no legacy `sessions` table found — nothing to rename)")
+		return nil
+	}
+	if tx.Migrator().HasTable("widget_sessions") {
+		return errors.New(
+			"both `sessions` and `widget_sessions` exist — one of them holds " +
+				"stale duplicate rows; inspect and drop the older one before " +
+				"re-running this migration")
+	}
+	if err := tx.Exec("ALTER TABLE sessions RENAME TO widget_sessions").Error; err != nil {
+		return fmt.Errorf("rename sessions -> widget_sessions: %w", err)
+	}
+	fmt.Println("   renamed `sessions` -> `widget_sessions`")
+	fmt.Println("   `auth_sessions` will be created on the next server boot")
 	return nil
 }
