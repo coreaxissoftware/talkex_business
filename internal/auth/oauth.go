@@ -84,11 +84,47 @@ func RegisterOAuthUserCreator(f OAuthUserCreator) {
 // RegisterOAuthRoutes adds the OAuth initiation and callback endpoints.
 // Uses /auth/oauth/:provider to avoid clashing with /auth/register, /auth/login, etc.
 func RegisterOAuthRoutes(r *gin.Engine) {
+	// Public — the login/register page uses this to decide which
+	// provider buttons to render. No auth required (it only tells the
+	// caller which providers are configured, never any secret).
+	r.GET("/auth/oauth/providers", handleOAuthProviders)
+
 	g := r.Group("/auth/oauth")
 	{
 		g.GET("/:provider", handleOAuthInit)
 		g.GET("/:provider/callback", handleOAuthCallback)
 	}
+}
+
+// handleOAuthProviders returns a small JSON map so the frontend can
+// hide social buttons whose provider hasn't been configured on the
+// server. Without this the merchant clicks "Sign in with Google" and
+// gets a raw JSON 503 explaining nothing — this endpoint gives the UI
+// exactly enough to hide the button gracefully.
+//
+// Never returns secrets. Only booleans, plus dev-mode which lets the
+// frontend render "Simulated" chips when the provider will fake
+// success without a real client_id.
+func handleOAuthProviders(c *gin.Context) {
+	cfg := config.Get()
+	out := gin.H{
+		"google":    cfg.OAuthGoogleClientID != "",
+		"github":    cfg.OAuthGitHubClientID != "",
+		"facebook":  cfg.OAuthFacebookClientID != "",
+		"apple":     cfg.OAuthAppleClientID != "",
+		"dev_mode":  cfg.IsDev(),
+	}
+	// In dev mode every provider effectively "works" (returns a
+	// simulated user), so we mark them true to keep the buttons
+	// present for testing.
+	if cfg.IsDev() {
+		out["google"] = true
+		out["github"] = true
+		out["facebook"] = true
+		out["apple"] = true
+	}
+	c.Header("Cache-Control", "public, max-age=60")
+	c.JSON(http.StatusOK, out)
 }
 
 // randomState generates a CSRF-safe random state parameter.

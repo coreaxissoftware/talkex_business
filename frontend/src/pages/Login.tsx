@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuthStore } from '../store/authStore'
-import SocialLoginButtons from '../components/SocialLoginButtons'
+import SocialLoginButtons, { useOAuthProviders } from '../components/SocialLoginButtons'
 import PasswordInput from '../components/PasswordInput'
 
 export default function Login() {
@@ -12,6 +12,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuthStore()
   const navigate = useNavigate()
+  const oauth = useOAuthProviders()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,14 +63,16 @@ export default function Login() {
 
       <SocialLoginButtons mode="login" />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
-        <span style={{
-          fontSize: 10, letterSpacing: '0.08em', color: 'var(--muted)',
-          fontWeight: 600, textTransform: 'uppercase',
-        }}>or continue with email</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
-      </div>
+      {oauth.anyEnabled && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
+          <span style={{
+            fontSize: 10, letterSpacing: '0.08em', color: 'var(--muted)',
+            fontWeight: 600, textTransform: 'uppercase',
+          }}>or continue with email</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
+        </div>
+      )}
 
       {error && (
         <div style={{

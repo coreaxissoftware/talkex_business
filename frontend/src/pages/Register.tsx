@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuthStore } from '../store/authStore'
 import { Check } from 'lucide-react'
-import SocialLoginButtons from '../components/SocialLoginButtons'
+import SocialLoginButtons, { useOAuthProviders } from '../components/SocialLoginButtons'
 import PasswordInput from '../components/PasswordInput'
 import api from '../services/api'
 
@@ -29,6 +29,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const { register } = useAuthStore()
   const navigate = useNavigate()
+  const oauth = useOAuthProviders()
 
   const startTimer = (setTimer: React.Dispatch<React.SetStateAction<number>>) => {
     let seconds = 30
@@ -105,14 +106,16 @@ export default function Register() {
 
       <SocialLoginButtons mode="register" />
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0' }}>
-        <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
-        <span style={{
-          fontSize: 10, letterSpacing: '0.08em', color: 'var(--muted)',
-          fontWeight: 600, textTransform: 'uppercase',
-        }}>or with email</span>
-        <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
-      </div>
+      {oauth.anyEnabled && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '14px 0' }}>
+          <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
+          <span style={{
+            fontSize: 10, letterSpacing: '0.08em', color: 'var(--muted)',
+            fontWeight: 600, textTransform: 'uppercase',
+          }}>or with email</span>
+          <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
+        </div>
+      )}
 
       {error && (
         <div style={{
