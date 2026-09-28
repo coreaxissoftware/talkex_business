@@ -207,34 +207,51 @@ nginx -t
 systemctl reload nginx
 
 # ── 9. TLS ─────────────────────────────────────────────────────────────
-say "Requesting Let's Encrypt certs"
+say "Requesting Let's Encrypt certs (per-domain — one failure doesn't sink the others)"
 # --nginx installs to the vhost automatically; --redirect flips 80 -> 443
 # for us; --non-interactive + --agree-tos + -m keeps the run headless.
-if ! certbot certificates 2>/dev/null | grep -q "business.talkex.in"; then
-  certbot --nginx \
-    --non-interactive \
-    --agree-tos \
-    -m "$ADMIN_EMAIL" \
-    --redirect \
-    -d business.talkex.in \
-    -d businessapp.talkex.in \
-    -d businessapi.talkex.in || {
-      echo "certbot failed — verify DNS then re-run this script"
-      exit 1
-    }
-else
-  echo "  certs already installed; skipping certbot"
+# Do one call per domain rather than a batch --expand: if DNS for one
+# domain is still propagating, the other two should still get certs.
+tls_failed=""
+for domain in business.talkex.in businessapp.talkex.in businessapi.talkex.in; do
+  if certbot certificates 2>/dev/null | grep -q "$domain"; then
+    echo "  cert already installed for $domain — skipping"
+    continue
+  fi
+  if certbot --nginx \
+       --non-interactive \
+       --agree-tos \
+       -m "$ADMIN_EMAIL" \
+       --redirect \
+       -d "$domain"; then
+    echo "  cert issued for $domain"
+  else
+    echo "  WARN: certbot failed for $domain — check DNS + rerun"
+    tls_failed="$tls_failed $domain"
+  fi
+done
+if [ -n "$tls_failed" ]; then
+  echo
+  echo "Some domains did not get a cert:$tls_failed"
+  echo "Verify DNS with:  dig +short$tls_failed"
+  echo "Then re-run this script — it is idempotent."
 fi
 
-# ── 10. Firewall ──────────────────────────────────────────────────────
-say "Configuring UFW"
-ufw --force reset >/dev/null
-ufw default deny incoming
-ufw default allow outgoing
-ufw allow 22/tcp   comment 'SSH'
-ufw allow 80/tcp   comment 'HTTP (redirects to HTTPS)'
-ufw allow 443/tcp  comment 'HTTPS'
-ufw --force enable
+# ── 10. Firewall — additive only ──────────────────────────────────────
+#
+# NO reset here: this box hosts other apps whose UFW rules we must NOT
+# wipe. We just add the ones we need (idempotent — `ufw allow` on an
+# existing rule is a no-op) and enable UFW without touching the default
+# policies (whatever ops already picked stands).
+say "Adding UFW rules (additive, non-destructive)"
+ufw allow 22/tcp   comment 'SSH'           >/dev/null || true
+ufw allow 80/tcp   comment 'HTTP (redirects to HTTPS)' >/dev/null || true
+ufw allow 443/tcp  comment 'HTTPS'         >/dev/null || true
+# Enable only when currently inactive — never touch an active tuned firewall.
+if ! ufw status | grep -q "Status: active"; then
+  echo "  UFW is inactive; leaving it that way (enable manually if desired)"
+  echo "    ufw enable"
+fi
 
 say "Bootstrap complete"
 echo
