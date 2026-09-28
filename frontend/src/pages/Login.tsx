@@ -1,11 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuthStore } from '../store/authStore'
-import { LogIn } from 'lucide-react'
-import talkexIcon from '../assets/talkex-icon.png'
 import SocialLoginButtons from '../components/SocialLoginButtons'
 import PasswordInput from '../components/PasswordInput'
-import Divider from '../components/Divider'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -22,9 +19,7 @@ export default function Login() {
     setLoading(true)
     try {
       await login(email, password)
-      if (rememberMe) {
-        localStorage.setItem('talkex_remember', 'true')
-      }
+      if (rememberMe) localStorage.setItem('talkex_remember', 'true')
       navigate('/')
     } catch (err: any) {
       setError(err.response?.data?.detail || err.response?.data?.error || 'Invalid email or password')
@@ -35,103 +30,106 @@ export default function Login() {
 
   return (
     <div>
-      {/* Back to marketing site */}
-      <div className="mb-4">
-        <a
-          href="https://business.talkex.in"
-          className="text-xs text-gray-500 hover:text-primary-600 inline-flex items-center gap-1"
-        >
-          ← Back to business.talkex.in
-        </a>
+      <a
+        href="https://business.talkex.in"
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 12, color: 'var(--muted)',
+          textDecoration: 'none', marginBottom: 40,
+        }}
+      >
+        ← Back to <span style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', marginLeft: 2 }}>business.talkex.in</span>
+      </a>
+
+      {/* Mobile-only brand mark */}
+      <div style={{ marginBottom: 24 }} className="lg-hide">
+        <div style={{
+          width: 44, height: 44, borderRadius: 12,
+          background: 'linear-gradient(135deg, var(--jade), var(--jade-deep))',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--paper)', fontWeight: 800, fontSize: 20, letterSpacing: '-0.03em',
+          boxShadow: '0 12px 32px rgba(14, 165, 160, 0.35)',
+        }}>T</div>
       </div>
+      <style>{`@media (min-width: 1024px) { .lg-hide { display: none !important; } }`}</style>
 
-      {/* Mobile logo */}
-      <div className="mb-8 lg:hidden text-center">
-        <img src={talkexIcon} alt="TalkEx" className="h-12 w-12 rounded-xl mx-auto mb-3" />
-        <h1 className="text-2xl font-bold text-gray-900">
-          Talk<span className="text-primary-600">Ex</span> Business
-        </h1>
-      </div>
+      <h1 className="headline-serif" style={{ marginBottom: 6 }}>
+        Welcome back.
+      </h1>
+      <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 28 }}>
+        Sign in to your account
+      </p>
 
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">Welcome back</h2>
-      <p className="text-gray-500 mb-6">Sign in to your account</p>
-
-      {/* Social login */}
       <SocialLoginButtons mode="login" />
 
-      <Divider text="or continue with email" />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '20px 0' }}>
+        <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
+        <span style={{
+          fontSize: 10, letterSpacing: '0.08em', color: 'var(--muted)',
+          fontWeight: 600, textTransform: 'uppercase',
+        }}>or continue with email</span>
+        <div style={{ flex: 1, height: 1, background: 'var(--hair)' }} />
+      </div>
 
-      {/* Error message */}
       {error && (
-        <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+        <div style={{
+          marginBottom: 16, padding: '10px 14px',
+          background: '#FEE2E2', border: '1px solid #FCA5A5',
+          borderRadius: 10, fontSize: 13, color: '#991B1B',
+        }}>
           {error}
         </div>
       )}
 
-      {/* Email/password form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
-            Email
-          </label>
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: 16 }}>
+          <label htmlFor="email" className="form-label">Email</label>
           <input
             id="email"
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+            className="form-input"
             placeholder="you@company.com"
             autoComplete="email"
           />
         </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <Link
-              to="/forgot-password"
-              className="text-xs font-medium text-primary-600 hover:text-primary-700"
-            >
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <label htmlFor="password" className="form-label" style={{ marginBottom: 0 }}>Password</label>
+            <Link to="/forgot-password" style={{ fontSize: 11, color: 'var(--jade)', fontWeight: 600, textDecoration: 'none' }}>
               Forgot password?
             </Link>
           </div>
-          <PasswordInput
-            id="password"
-            value={password}
-            onChange={setPassword}
-          />
+          <PasswordInput id="password" value={password} onChange={setPassword} />
         </div>
 
-        {/* Remember me */}
-        <div className="flex items-center gap-2">
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontSize: 13, color: 'var(--ink-soft)', cursor: 'pointer',
+          marginBottom: 20,
+        }}>
           <input
-            id="remember"
             type="checkbox"
             checked={rememberMe}
             onChange={(e) => setRememberMe(e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+            style={{ accentColor: 'var(--jade)', width: 16, height: 16 }}
           />
-          <label htmlFor="remember" className="text-sm text-gray-600 select-none cursor-pointer">
-            Remember me for 30 days
-          </label>
-        </div>
+          Remember me for 30 days
+        </label>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-700 disabled:opacity-50 transition-colors"
-        >
-          <LogIn size={18} />
-          {loading ? 'Signing in...' : 'Sign in'}
+        <button type="submit" disabled={loading} className="btn-primary">
+          {loading ? 'Signing in…' : (
+            <>Sign in <span style={{ opacity: 0.6 }}>→</span></>
+          )}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--muted)' }}>
         Don't have an account?{' '}
-        <Link to="/register" className="font-medium text-primary-600 hover:text-primary-700">
+        <Link to="/register" className="link-jade" style={{ textDecoration: 'none' }}>
           Create one
         </Link>
       </p>

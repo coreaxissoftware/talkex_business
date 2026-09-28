@@ -21,7 +21,7 @@ export default function PasswordInput({
   const [visible, setVisible] = useState(false)
 
   return (
-    <div className="relative">
+    <div style={{ position: 'relative' }}>
       <input
         id={id}
         type={visible ? 'text' : 'password'}
@@ -29,16 +29,24 @@ export default function PasswordInput({
         minLength={minLength}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-11 text-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 outline-none transition-all"
+        className="form-input"
         placeholder={placeholder}
+        style={{ paddingRight: 40 }}
       />
       <button
         type="button"
         onClick={() => setVisible(!visible)}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+        style={{
+          position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: '#94A3B8', padding: 4, display: 'flex',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = '#0F172A')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = '#94A3B8')}
         tabIndex={-1}
+        aria-label={visible ? 'Hide password' : 'Show password'}
       >
-        {visible ? <EyeOff size={18} /> : <Eye size={18} />}
+        {visible ? <EyeOff size={17} /> : <Eye size={17} />}
       </button>
     </div>
   )

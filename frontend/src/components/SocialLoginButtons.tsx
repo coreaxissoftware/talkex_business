@@ -42,11 +42,11 @@ export default function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
   }
 
   return (
-    <div className="space-y-2.5">
+    <div style={{marginBottom: 4}}>
       <button
         type="button"
         onClick={() => handleSocialLogin('google')}
-        className="w-full flex items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
+        className="btn-oauth" style={{width: "100%", marginBottom: 8}}
       >
         {googleIcon}
         {label} with Google
@@ -55,17 +55,17 @@ export default function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
       <button
         type="button"
         onClick={() => handleSocialLogin('facebook')}
-        className="w-full flex items-center justify-center gap-3 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
+        className="btn-oauth" style={{width: "100%", marginBottom: 8}}
       >
         {facebookIcon}
         {label} with Facebook
       </button>
 
-      <div className="grid grid-cols-2 gap-2.5">
+      <div style={{display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8}}>
         <button
           type="button"
           onClick={() => handleSocialLogin('apple')}
-          className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
+          className="btn-oauth"
         >
           {appleIcon}
           Apple
@@ -74,7 +74,7 @@ export default function SocialLoginButtons({ mode }: SocialLoginButtonsProps) {
         <button
           type="button"
           onClick={() => handleSocialLogin('github')}
-          className="flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all"
+          className="btn-oauth"
         >
           {githubIcon}
           GitHub
