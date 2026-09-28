@@ -138,9 +138,13 @@ FRONTEND_URL=https://businessapp.talkex.in
 # RAZORPAY_KEY_ID=
 # SENTRY_DSN=
 ENV
-  chmod 600 "$ENV_FILE"
-  chown root:root "$ENV_FILE"
 fi
+
+# Perms: root:talkex 0640 — root can edit, the talkex user (which the
+# migrate CLI runs as) can read. Systemd's EnvironmentFile= reads it
+# as PID 1 (root) so the API path doesn't rely on group access.
+chown root:"$API_USER" "$ENV_FILE"
+chmod 0640 "$ENV_FILE"
 
 # ── 6. Build API + frontend + copy marketing ──────────────────────────
 say "Building API binary"
