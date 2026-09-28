@@ -12,7 +12,7 @@ The stack is deliberately boring — three components, all open standards.
 
 ## Scraping
 
-Point any Prometheus-compatible scraper at `https://api.business.talkex.in/metrics`. On Fly.io the [metrics] block in `fly.toml` already registers the path, so the built-in Fly metrics dashboard picks it up automatically.
+Point any Prometheus-compatible scraper at `https://businessapi.talkex.in/metrics`. On Fly.io the [metrics] block in `fly.toml` already registers the path, so the built-in Fly metrics dashboard picks it up automatically.
 
 For a proper long-term store, forward to **Grafana Cloud** (free 10k series tier is enough):
 
@@ -24,7 +24,7 @@ scrape_configs:
     metrics_path: /metrics
     scheme: https
     static_configs:
-      - targets: ['api.business.talkex.in']
+      - targets: ['businessapi.talkex.in']
 ```
 
 ## Grafana dashboards

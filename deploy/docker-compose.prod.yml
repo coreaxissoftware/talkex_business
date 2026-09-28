@@ -55,8 +55,8 @@ services:
       ENVIRONMENT: production
       CORS_ORIGINS: ${CORS_ORIGINS:-https://business.talkex.in}
       PORT: "8080"
-      BASE_URL: ${BASE_URL:-https://api.business.talkex.in}
-      FRONTEND_URL: ${FRONTEND_URL:-https://app.business.talkex.in}
+      BASE_URL: ${BASE_URL:-https://businessapi.talkex.in}
+      FRONTEND_URL: ${FRONTEND_URL:-https://businessapp.talkex.in}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
       RAZORPAY_SECRET: ${RAZORPAY_SECRET:-}

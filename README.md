@@ -192,7 +192,7 @@ marketing/              ← Static single-page marketing site (business.talkex.i
 
 ### Two-site deploy
 
-The dashboard (`frontend/`) deploys to **`app.business.talkex.in`**; the marketing site
+The dashboard (`frontend/`) deploys to **`businessapp.talkex.in`**; the marketing site
 (`marketing/`) is a separate Vercel project on **`business.talkex.in`**. The header
 "Sign in" and every "Start free" CTA hard-links from marketing to the app; the
 app's login and register pages carry a "← Back to business.talkex.in" link the other

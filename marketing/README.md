@@ -2,7 +2,7 @@
 
 Static single-page app (hash-routed) that lives at **[business.talkex.in](https://business.talkex.in)**.
 The actual product dashboard is a separate Vite app at `/frontend`, deployed to
-`app.business.talkex.in`.
+`businessapp.talkex.in`.
 
 ## Structure
 
@@ -10,7 +10,7 @@ The actual product dashboard is a separate Vite app at `/frontend`, deployed to
   `#/blog`, `#/docs`, `#/status`, `#/case-studies`, `#/demo`, `#/legal/*`, etc.)
   is a section swap in the same document.
 - **`vercel.json`** — SPA rewrites, security headers, CSP restricted to Google
-  Fonts + `app.business.talkex.in`, `/signup` and `/login` redirects to the app.
+  Fonts + `businessapp.talkex.in`, `/signup` and `/login` redirects to the app.
 
 ## Local preview
 
@@ -31,13 +31,13 @@ cd marketing && vercel --prod
 ```
 
 Point the `business.talkex.in` apex + `www.business.talkex.in` at the resulting project. The
-dashboard app (Vercel project #2) sits on `app.business.talkex.in` and is deployed from
+dashboard app (Vercel project #2) sits on `businessapp.talkex.in` and is deployed from
 `/frontend` with its own `deploy/vercel.json`.
 
 ## Wiring to the app
 
-- Header **Sign in** → `https://app.business.talkex.in/login`
-- All **Start free** CTAs → `https://app.business.talkex.in/register`
+- Header **Sign in** → `https://businessapp.talkex.in/login`
+- All **Start free** CTAs → `https://businessapp.talkex.in/register`
 - Footer **Book a demo** → `#/demo` (in-page booking form)
 - Footer **Status** → `#/status` (mirror of api uptime)
 

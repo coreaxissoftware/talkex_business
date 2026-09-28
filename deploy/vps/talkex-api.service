@@ -1,0 +1,53 @@
+# systemd unit for the TalkEx Business Go API.
+#
+# Installed to /etc/systemd/system/talkex-api.service by setup.sh.
+#
+# Commands:
+#   systemctl status talkex-api
+#   systemctl restart talkex-api
+#   journalctl -u talkex-api -f     # live logs
+
+[Unit]
+Description=TalkEx Business API
+After=network-online.target postgresql.service redis-server.service
+Wants=network-online.target
+Requires=postgresql.service redis-server.service
+
+[Service]
+Type=simple
+User=talkex
+Group=talkex
+
+# Environment lives in /etc/talkex-business.env (root:root, 0600).
+# EnvironmentFile= supports one-per-line KEY=VALUE, no shell.
+EnvironmentFile=/etc/talkex-business.env
+
+# WorkingDirectory keeps the SQLite fallback + uploads/ next to the
+# repo checkout in case someone rolls back to a pre-Postgres commit.
+WorkingDirectory=/opt/talkex-business
+ExecStart=/usr/local/bin/talkex-api
+
+# Sandboxing — the API doesn't need to write outside these paths.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/talkex-business/uploads /var/log/talkex
+
+# Resource guards — a runaway won't take the box with it.
+LimitNOFILE=65535
+MemoryMax=2G
+TasksMax=4096
+
+# Restart policy — recover from a panic, back off if it's crash-looping.
+Restart=on-failure
+RestartSec=5s
+StartLimitInterval=60s
+StartLimitBurst=5
+
+# journald captures stdout + stderr; `journalctl -u talkex-api` reads them.
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

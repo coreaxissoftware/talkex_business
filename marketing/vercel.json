@@ -16,7 +16,7 @@
         { "key": "Cross-Origin-Resource-Policy", "value": "same-site" },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://app.business.talkex.in; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
+          "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self' 'unsafe-inline'; connect-src 'self' https://businessapp.talkex.in; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests"
         }
       ]
     },
@@ -28,9 +28,9 @@
     }
   ],
   "redirects": [
-    { "source": "/signup", "destination": "https://app.business.talkex.in/register", "permanent": false },
-    { "source": "/login",  "destination": "https://app.business.talkex.in/login",    "permanent": false },
-    { "source": "/app",    "destination": "https://app.business.talkex.in",           "permanent": false }
+    { "source": "/signup", "destination": "https://businessapp.talkex.in/register", "permanent": false },
+    { "source": "/login",  "destination": "https://businessapp.talkex.in/login",    "permanent": false },
+    { "source": "/app",    "destination": "https://businessapp.talkex.in",           "permanent": false }
   ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }

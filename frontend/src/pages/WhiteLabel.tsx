@@ -107,7 +107,7 @@ export default function WhiteLabel() {
           <Section title="Domain & email">
             <Field label="Custom domain">
               <input className="input" value={b.custom_domain} onChange={(e) => set('custom_domain', e.target.value)} placeholder="app.your-brand.com" />
-              <p className="text-xs text-gray-500 mt-1">Point a CNAME at <code>app.business.talkex.in</code>.</p>
+              <p className="text-xs text-gray-500 mt-1">Point a CNAME at <code>businessapp.talkex.in</code>.</p>
             </Field>
             <Field label="From email">
               <input className="input" value={b.from_email} onChange={(e) => set('from_email', e.target.value)} placeholder="no-reply@your-brand.com" />

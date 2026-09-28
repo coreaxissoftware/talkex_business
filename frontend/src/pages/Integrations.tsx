@@ -180,7 +180,7 @@ function ShopifyPanel() {
         <li>
           Point it at:{' '}
           <code className="bg-gray-100 px-1 py-0.5 rounded text-xs">
-            https://api.business.talkex.in/integrations/shopify/webhook?owner=&lt;YOUR_OWNER_ID&gt;
+            https://businessapi.talkex.in/integrations/shopify/webhook?owner=&lt;YOUR_OWNER_ID&gt;
           </code>
         </li>
         <li>

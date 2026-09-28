@@ -2224,8 +2224,8 @@
       <button class="menu-btn" id="menuBtn" aria-label="Menu">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       </button>
-      <a href="https://app.business.talkex.in/login" class="btn btn-ghost btn-sign">Sign in</a>
-      <a href="https://app.business.talkex.in/register" class="btn btn-primary">Start free
+      <a href="https://businessapp.talkex.in/login" class="btn btn-ghost btn-sign">Sign in</a>
+      <a href="https://businessapp.talkex.in/register" class="btn btn-primary">Start free
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
       </a>
     </div>
@@ -2247,7 +2247,7 @@
         assist, and a wallet that meters every rupee.
       </p>
       <div class="hero-actions">
-        <a href="https://app.business.talkex.in/register" class="btn btn-primary btn-lg">Start free — no card required</a>
+        <a href="https://businessapp.talkex.in/register" class="btn btn-primary btn-lg">Start free — no card required</a>
         <a href="#/product" data-link class="btn btn-ghost btn-lg">See the product</a>
         <span class="meta">14-day trial · ₹0 setup</span>
       </div>
@@ -2411,7 +2411,7 @@
       <h2 class="cta-title">Your customers are already messaging. <em>Answer them.</em></h2>
       <p class="cta-lead">Fourteen days on the Growth plan — no card required. Import a CSV, wire a channel, send a campaign before lunch.</p>
       <div class="cta-actions">
-        <a href="https://app.business.talkex.in/register" class="btn btn-primary btn-lg">Start free trial →</a>
+        <a href="https://businessapp.talkex.in/register" class="btn btn-primary btn-lg">Start free trial →</a>
         <a href="#/company" data-link class="btn btn-ghost btn-lg">Book a 20-min demo</a>
       </div>
     </div>
@@ -2798,7 +2798,7 @@
       <h2 class="cta-title">See it running in <em>five minutes.</em></h2>
       <p class="cta-lead">Register with an email — no card, no sales call. Full Growth-plan trial for 14 days.</p>
       <div class="cta-actions">
-        <a href="https://app.business.talkex.in/register" class="btn btn-primary btn-lg">Start free trial →</a>
+        <a href="https://businessapp.talkex.in/register" class="btn btn-primary btn-lg">Start free trial →</a>
       </div>
     </div>
   </div>
@@ -2904,7 +2904,7 @@
           <li>Live chat widget</li>
           <li>Community support</li>
         </ul>
-        <a href="https://app.business.talkex.in/register" class="price-cta">Start free</a>
+        <a href="https://businessapp.talkex.in/register" class="price-cta">Start free</a>
       </div>
 
       <div class="price-card highlight">
@@ -3013,7 +3013,7 @@
       <h2 class="cta-title">Still deciding? <em>Try it before you talk to us.</em></h2>
       <p class="cta-lead">14-day Growth trial with no card. If you want a demo instead, we'll schedule a 20-minute walkthrough.</p>
       <div class="cta-actions">
-        <a href="https://app.business.talkex.in/register" class="btn btn-primary btn-lg">Start free trial →</a>
+        <a href="https://businessapp.talkex.in/register" class="btn btn-primary btn-lg">Start free trial →</a>
         <a href="#/company" data-link class="btn btn-ghost btn-lg">Talk to sales</a>
       </div>
     </div>
@@ -3066,7 +3066,7 @@
             <button class="copy-btn" onclick="navigator.clipboard.writeText(document.getElementById('codeSample').textContent)">Copy</button>
           </div>
           <pre id="codeSample"><span class="comment"># Send a WhatsApp template to one contact</span>
-curl -X POST https://api.business.talkex.in/conversations/send \
+curl -X POST https://businessapi.talkex.in/conversations/send \
   -H <span class="str">"Authorization: Bearer $TALKEX_API_KEY"</span> \
   -H <span class="str">"Idempotency-Key: order-4021-shipped"</span> \
   -d <span class="str">'{
@@ -3655,7 +3655,7 @@ curl -X POST https://api.business.talkex.in/conversations/send \
       <h2 class="cta-title">Or just <em>try it.</em></h2>
       <p class="cta-lead">If a 20-minute demo isn't your thing, the free tier is one email away.</p>
       <div class="cta-actions">
-        <a href="https://app.business.talkex.in/register" class="btn btn-primary btn-lg">Start free →</a>
+        <a href="https://businessapp.talkex.in/register" class="btn btn-primary btn-lg">Start free →</a>
       </div>
     </div>
   </div>
@@ -3812,7 +3812,7 @@ curl -X POST https://api.business.talkex.in/conversations/send \
         <h2>Saturday · re-submit templates + wire the API</h2>
         <ol>
           <li>Create every template inside TalkEx and hit <strong>Submit to Meta</strong>. Approvals trickle in through Sunday.</li>
-          <li>Point your webhook receivers at TalkEx (<code>https://api.business.talkex.in/webhooks/channels/whatsapp</code>). Keep the old webhook live too — dual-write for the transition.</li>
+          <li>Point your webhook receivers at TalkEx (<code>https://businessapi.talkex.in/webhooks/channels/whatsapp</code>). Keep the old webhook live too — dual-write for the transition.</li>
           <li>Wire your CRM's outbound sends to TalkEx's <code>POST /conversations/send</code>. If you're on Zapier / Make, we have pre-built connectors.</li>
         </ol>
         <h2>Sunday · cut over</h2>
@@ -3873,7 +3873,7 @@ curl -X POST https://api.business.talkex.in/conversations/send \
         <h2 style="margin-top:0">Quickstart · <em>5 minutes to your first message.</em></h2>
         <p>You'll register a workspace, wire the sandbox channel, add yourself as a contact, and send a message. Total time: about 5 minutes, no card required.</p>
         <h3>1 · Register a workspace</h3>
-        <p>Head to <a href="https://app.business.talkex.in/register">app.business.talkex.in/register</a>. Full name, mobile with OTP, email with OTP, password. No card. You land on the Dashboard.</p>
+        <p>Head to <a href="https://businessapp.talkex.in/register">businessapp.talkex.in/register</a>. Full name, mobile with OTP, email with OTP, password. No card. You land on the Dashboard.</p>
         <h3>2 · Wire the sandbox channel</h3>
         <p>Sandbox mode simulates every send instead of dispatching — perfect for the first hour. Open <a href="#">Channels → TalkEx (sandbox)</a> → click Enable. That's it.</p>
         <h3>3 · Add yourself as a contact</h3>
@@ -3910,7 +3910,7 @@ curl -X POST https://api.business.talkex.in/conversations/send \
     <div class="status-services">
       <div class="status-service">
         <div>
-          <div class="status-service-name">API — api.business.talkex.in</div>
+          <div class="status-service-name">API — businessapi.talkex.in</div>
           <div class="status-service-uptime" style="margin-top:4px">99.98% uptime · avg 143ms</div>
         </div>
         <div class="status-service-uptime">HTTPS · Fly.io Mumbai</div>
@@ -3918,7 +3918,7 @@ curl -X POST https://api.business.talkex.in/conversations/send \
       </div>
       <div class="status-service">
         <div>
-          <div class="status-service-name">Web app — app.business.talkex.in</div>
+          <div class="status-service-name">Web app — businessapp.talkex.in</div>
           <div class="status-service-uptime" style="margin-top:4px">100% uptime</div>
         </div>
         <div class="status-service-uptime">Vercel Edge</div>
@@ -4108,7 +4108,7 @@ curl -X POST https://api.business.talkex.in/conversations/send \
       <h2 class="cta-title">Want to be <em>next?</em></h2>
       <p class="cta-lead">Start on the free tier, and if TalkEx turns out to be your inbox we'd love to write your story.</p>
       <div class="cta-actions">
-        <a href="https://app.business.talkex.in/register" class="btn btn-primary btn-lg">Start free →</a>
+        <a href="https://businessapp.talkex.in/register" class="btn btn-primary btn-lg">Start free →</a>
         <a href="#/demo" data-link class="btn btn-ghost btn-lg">Book a demo</a>
       </div>
     </div>
@@ -4743,7 +4743,7 @@ curl -X POST https://api.business.talkex.in/conversations/send \
   // ==========================================================
   const samples = {
     curl: `<span class="comment"># Send a WhatsApp template to one contact</span>
-curl -X POST https://api.business.talkex.in/conversations/send \\
+curl -X POST https://businessapi.talkex.in/conversations/send \\
   -H <span class="str">"Authorization: Bearer $TALKEX_API_KEY"</span> \\
   -H <span class="str">"Idempotency-Key: order-4021-shipped"</span> \\
   -d <span class="str">'{
