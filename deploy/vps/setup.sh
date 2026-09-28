@@ -200,8 +200,11 @@ for domain in business.talkex.in businessapp.talkex.in businessapi.talkex.in; do
   install -m 0644 "$INSTALL_DIR/deploy/vps/nginx/${domain}.conf" "/etc/nginx/sites-available/${domain}.conf"
   ln -sf "/etc/nginx/sites-available/${domain}.conf" "/etc/nginx/sites-enabled/${domain}.conf"
 done
-# Remove default site once so a bare curl doesn't leak nginx defaults.
-rm -f /etc/nginx/sites-enabled/default
+# NOTE: we intentionally do NOT touch /etc/nginx/sites-enabled/default —
+# on shared boxes it often holds a real site (a marketing page, a redirect
+# service, an admin portal), and removing it silently deletes someone
+# else's content. Our vhosts are `server_name`-scoped, so they coexist
+# with anything the box already serves.
 
 nginx -t
 systemctl reload nginx
